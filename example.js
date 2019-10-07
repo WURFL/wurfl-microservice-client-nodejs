@@ -1,13 +1,24 @@
-wm-client
-==============
+/*
+   Copyright 2019 ScientiaMobile Inc. http://www.scientiamobile.com
 
-Node.js implementation of the WM Client api
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-Example api use looking up a single UserAgent :
+   http://www.apache.org/licenses/LICENSE-2.0
 
-```javascript
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+ */
+
+// this must be used when executing directly from source code downloaded from git repo
+var client = require('./src/app/wmclient');
+
 // this must be used when executing the example by installing wmclient using  "npm install wmclient"
-var client = require('wmclient');
+// var client = require('wmclient');
 
 console.log('Running with node version ' + process.version)
 
@@ -96,7 +107,7 @@ client.create('http:', 'localhost', '8080', '', function (result, error) {
                     return comparison;
                 }
 
-                // Sort $modelMktNames by their model name
+                // Sort modelMktNames by their model name
                 modelMktNames.sort(compare);
                 console.log("Print all Model for the Apple Brand");
                 for (var i = 0; i < modelMktNames.length; i++) {
@@ -131,9 +142,3 @@ client.create('http:', 'localhost', '8080', '', function (result, error) {
     });
 
 });
-```
-
-All the calls to WM client API functions accept a callback function that handle a result parameter and an error one. If the error parameter has a value, there are no device data available and the message reports the cause that made the data unavailable (ie: you provided empty or invalid input, or there has been a connection issue between client and server).
-
-
-
