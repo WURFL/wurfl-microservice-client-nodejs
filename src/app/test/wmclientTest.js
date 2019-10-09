@@ -495,21 +495,6 @@ describe('WM Client tests', function () {
             });
         });
     });
-    describe('#getAllMakeModel', function () {
-        it('should retrieve a json array holding all device make and models', function (done) {
-            client.getAllMakeModel(function (makeModel) {
-                asrt.isOk(makeModel);
-                asrt.isOk(makeModel[0]);
-                console.log(makeModel[5]);
-                asrt.isOk(makeModel[0].brandName);
-                asrt.isOk(makeModel[0].modelName);
-                asrt.isOk(makeModel[5].marketingName);
-                // Make model cache has been set
-                asrt.isAtLeast(client.makeModel.length, 20000);
-                done();
-            }, client);
-        });
-    });
     describe('#getAllDeviceMakes', function () {
         it('should retrieve a json array holding all device make', function (done) {
             client.getAllDeviceMakes(function (modelMktName) {

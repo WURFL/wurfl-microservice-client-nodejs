@@ -94,5 +94,4 @@ function JSONModelMktName(modelName, marketingName) {
 module.exports.JSONInfoData = JSONInfoData;
 module.exports.Request = Request;
 module.exports.JSONDeviceData = JSONDeviceData;
-module.exports.JSONMakeModel = JSONMakeModel;
 module.exports.JSONModelMktName = JSONModelMktName;

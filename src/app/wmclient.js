@@ -37,7 +37,6 @@ function WmClient(scheme, host, port, baseURI) {
     this.reqStaticCaps = [];
     this.uaCache;
     this.devIdCache;
-    this.makeModel = [];
     this.httpTimeout = 10000;
 
     this.deviceMakesMap;
@@ -281,49 +280,6 @@ WmClient.prototype.getCapabilityCount = function(device){
 };
 
 /**
- * getAllMakeModel returns identity data for all devices in WM server
- * @deprecated since 1.2.0.0 in favour of getAllDeviceMakes
- * @param cb
- * @param client
- * @returns {JSONMakeModel[]}
- */
-WmClient.prototype.getAllMakeModel = function (cb, client) {
-    var options = this.getOptions('/v2/alldevices/json', 'GET');
-
-    // Check if we have a value for MakeModel
-    if(!isUndefined(this.makeModel) && this.makeModel.length > 0){
-        // This returns a deep copy of make model, so that any changes to it are not reflected into our cached value
-        return cb(JSON.parse(JSON.stringify(this.makeModel)));
-    }
-
-    var req = http.request(options, function (res) {
-        var body = '';
-
-        res.on('data', function (chunk) {
-            body += chunk;
-        });
-
-        res.on('end', function () {
-
-            var mkMd = parseMakeModel(body);
-            if(!isUndefined(client) && (isUndefined(client.makeModel) || client.makeModel.length === 0)) {
-                client.makeModel = mkMd;
-            }
-            cb(mkMd);
-        });
-
-
-
-    });
-    req.on('error', function (e) {
-        return resultCb(undefined,e)
-    });
-
-    req.end();
-
-};
-
-/**
  * getAllDeviceMakes returns identity data for all devices in WM server
  * @param cb callback that will be ccalled with the API call result
  */
@@ -538,7 +494,6 @@ WmClient.prototype.clearCaches = function () {
             this.devIdCache.reset();
     }
 
-    this.makeModel = [];
     this.deviceMakesMap = {};
     this.deviceOsVerMap = {};
 };
@@ -580,21 +535,6 @@ function parseInfo(body) {
             throw Error("server returned invalid or empty data")
         }
     return info;
-}
-
-function parseMakeModel(body) {
-    var data = JSON.parse(body);
-    var makeModel = [];
-    for (var i = 0; i < data.length; i++){
-        var mkMd = new model.JSONMakeModel(
-            data[i].brand_name,
-            data[i].model_name,
-            data[i].marketing_name);
-        makeModel.push(mkMd);
-    }
-
-
-    return makeModel;
 }
 
 function parseDevice(body) {
