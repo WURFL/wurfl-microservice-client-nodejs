@@ -1,4 +1,4 @@
-wm-client
+ScientiaMobile WURFL Microservice Client for NODE.JS
 ==============
 
 Node.js implementation of the WM Client api
