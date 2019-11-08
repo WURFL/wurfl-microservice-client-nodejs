@@ -1,6 +1,6 @@
 {
   "name": "wmclient",
-  "description": "Client implementation for WURFL microservice",
+  "description": "WURFL by ScientiaMobile. WURFL Microservice Client",
   "version": "2.0.1",
   "license": "Apache-2.0",
   "main": "./wmclient.js",
