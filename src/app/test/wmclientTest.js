@@ -112,7 +112,7 @@ describe('WM Client tests', function () {
             wmClient.create('http:', 'localhost', '8080', '', function (result) {
                 asrt.isOk(result.hasStaticCapability('brand_name'));
                 asrt.isOk(result.hasStaticCapability('model_name'));
-                asrt.isOk(result.hasStaticCapability('is_wireless_device'));
+                asrt.isOk(result.hasStaticCapability('is_smarttv'));
                 // this is a virtual capability, so it shouldn't be returned
                 asrt.isNotOk(result.hasStaticCapability('is_app'));
                 // This doesn't exist
@@ -125,10 +125,10 @@ describe('WM Client tests', function () {
     describe('#HasVirtualCapability', function () {
         it('should return true when a virtual capability is exposed by the WM server, false otherwise', function (done) {
             wmClient.create('http:', 'localhost', '8080', '', function (result) {
-                asrt.isOk(result.hasVirtualCapability('is_app'));
+                asrt.isOk(result.hasVirtualCapability('is_robot'));
                 asrt.isOk(result.hasVirtualCapability('is_smartphone'));
                 asrt.isOk(result.hasVirtualCapability('form_factor'));
-                asrt.isOk(result.hasVirtualCapability('is_app_webview'));
+                asrt.isOk(result.hasVirtualCapability('form_factor'));
                 // this is a static capability, so it shouldn't be returned
                 asrt.isNotOk(result.hasVirtualCapability('brand_name'));
                 // This doesn't exist
@@ -164,8 +164,8 @@ describe('WM Client tests', function () {
                 asrt.isOk(device);
                 asrt.isUndefined(error);
                 asrt.equal(device.capabilities['brand_name'], 'Nokia');
-                asrt.equal('1', device.capabilities['xhtml_support_level']);
-                asrt.equal('128', device.capabilities['resolution_width']);
+                asrt.equal('false', device.capabilities['is_robot']);
+                asrt.equal('Feature Phone', device.capabilities['form_factor']);
                 asrt.isAbove(client.getCapabilityCount(device), 0);
                 asrt.isOk(device.ltime);
                 done();
@@ -174,13 +174,13 @@ describe('WM Client tests', function () {
         });
         it('should return device data with the selected capability values', function (done) {
 
-            client.setRequestedStaticCapabilities(['brand_name', 'model_name', 'xhtml_support_level']);
-            client.setRequestedVirtualCapabilities(['is_app']);
+            client.setRequestedStaticCapabilities(['brand_name', 'model_name']);
+            client.setRequestedVirtualCapabilities(['is_robot', 'is_full_desktop']);
             client.lookupDeviceID('nokia_generic_series40', function (device, error) {
                 asrt.isUndefined(error);
                 asrt.isOk(device);
                 asrt.equal(device.capabilities['brand_name'], 'Nokia');
-                asrt.equal('1', device.capabilities['xhtml_support_level']);
+                asrt.equal('false', device.capabilities['is_robot']);
                 asrt.isNotOk(device.capabilities['resolution_width']);
                 asrt.equal(client.getCapabilityCount(device), 5);
                 // reset these values
@@ -234,8 +234,8 @@ describe('WM Client tests', function () {
                 asrt.isUndefined(error);
                 asrt.isOk(device);
                 asrt.equal(device.capabilities['brand_name'], 'Asus');
-                asrt.equal('4', device.capabilities['xhtml_support_level']);
-                asrt.equal('1080', device.capabilities['resolution_width']);
+                asrt.equal('false', device.capabilities['is_robot']);
+                asrt.equal('Z017D', device.capabilities['model_name']);
                 asrt.equal(device.capabilities['wurfl_id'], 'asus_z017d_ver1');
                 asrt.isAbove(client.getCapabilityCount(device), 0);
                 asrt.isOk(device.ltime);
@@ -245,16 +245,16 @@ describe('WM Client tests', function () {
         });
         it('should return device data with the set of chosen capabilities', function (done) {
 
-            client.setRequestedStaticCapabilities(['brand_name', 'model_name', 'xhtml_support_level']);
-            client.setRequestedVirtualCapabilities(['is_app']);
+            client.setRequestedStaticCapabilities(['brand_name', 'model_name']);
+            client.setRequestedVirtualCapabilities(['is_robot', 'form_factor']);
             client.lookupUserAgent('Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36', function (device, error) {
                 asrt.isUndefined(error);
                 asrt.isOk(device);
                 asrt.equal(device.capabilities['brand_name'], 'Asus');
                 asrt.equal(device.capabilities['model_name'], 'Z017D');
-                asrt.equal('4', device.capabilities['xhtml_support_level']);
+                asrt.equal('false', device.capabilities['is_robot']);
                 asrt.equal(device.capabilities['wurfl_id'], 'asus_z017d_ver1');
-                asrt.equal(device.capabilities['is_app'], 'false');
+                asrt.equal(device.capabilities['form_factor'], 'Smartphone');
                 asrt.equal(client.getCapabilityCount(device), 5);
 
                 // These caps have not been defined
@@ -264,15 +264,6 @@ describe('WM Client tests', function () {
                 asrt.isOk(device.APIVersion);
                 client.setRequestedStaticCapabilities([]);
                 client.setRequestedVirtualCapabilities([]);
-                done();
-            });
-        });
-        it('should return an undefined device and an error with message when empty user agent is provided', function (done) {
-
-            client.lookupUserAgent('', function (device, error) {
-                asrt.isUndefined(device);
-                asrt.isOk(error);
-                asrt.isOk(error.message.indexOf('No User-Agent header provided') !== -1);
                 done();
             });
         });
@@ -304,36 +295,17 @@ describe('WM Client tests', function () {
                 asrt.equal('asus_z017d_ver1', device.capabilities['wurfl_id']);
                 asrt.equal(device.capabilities['brand_name'], 'Asus');
                 asrt.equal(device.capabilities['model_name'], 'Z017D');
-                asrt.equal(device.capabilities['is_app'], 'false');
-                asrt.equal(device.capabilities['is_wireless_device'], 'true');
-                asrt.equal(device.capabilities['is_ios'], 'false');
+                asrt.equal(device.capabilities['is_robot'], 'false');
+                asrt.equal(device.capabilities['is_full_desktop'], 'false');
                 asrt.isOk(device.APIVersion);
                 asrt.isAbove(device.mtime, 0);
                 done();
             });
         });
-        it('should return an undefined device and an error with message', function (done) {
-            var options = {
-                protocol: 'http:',
-                host: 'localhost',
-                port: '8080',
-                method: 'POST',
-                path: '/',
-            };
-            var req = http.request(options);
-            req.headers = [];
-            req.end();
-            client.lookupRequest(req, function (device, error) {
-                asrt.isOk(error);
-                asrt.isUndefined(device);
-                asrt.isTrue(error.message.indexOf("No User-Agent")!==-1);
-                done();
-            });
-        });
         it('should return a device with the chosen capabilities', function (done) {
 
-            client.setRequestedStaticCapabilities(['brand_name', 'pointing_method']);
-            client.setRequestedVirtualCapabilities(['is_app', 'form_factor']);
+            client.setRequestedStaticCapabilities(['brand_name', 'model_name']);
+            client.setRequestedVirtualCapabilities(['is_robot', 'form_factor']);
             // In order to emulate node js behaviour we must lowercase (see: https://nodejs.org/docs/latest-v0.10.x/api/http.html) "Keys are lowercased. Values are not modified"
             var hs = {
                 'content-type': 'application/json',
@@ -356,8 +328,8 @@ describe('WM Client tests', function () {
                 asrt.isOk(client.getCapabilityCount(device) === 5);
                 asrt.equal('asus_z017d_ver1', device.capabilities['wurfl_id']);
                 asrt.equal(device.capabilities['brand_name'], 'Asus');
-                asrt.equal(device.capabilities['pointing_method'], 'touchscreen');
-                asrt.equal(device.capabilities['is_app'], 'false');
+                asrt.equal(device.capabilities['model_name'], 'Z017D');
+                asrt.equal(device.capabilities['is_robot'], 'false');
                 asrt.equal(device.capabilities['form_factor'], 'Smartphone');
                 // This capability is not included in the filter
                 asrt.isNotOk(device.capabilities['is_ios']);
@@ -399,14 +371,14 @@ describe('WM Client tests', function () {
     });
     describe('#setRequestedCapability', function () {
         it('assign each capability in the given array to the proper specific array of static or virtual capabilities', function (done) {
-            client.setRequestedCapabilities(["is_app", "pointing_method", "brand_name", "model_name", "form_factor", "is_robot", "is_wireless_device"]);
-            asrt.deepEqual(client.reqStaticCaps, ['pointing_method', 'brand_name','model_name', 'is_wireless_device']);
-            asrt.deepEqual(client.reqVCaps, ['is_app', 'form_factor','is_robot']);
+            client.setRequestedCapabilities(["is_full_desktop", "marketing_name", "brand_name", "model_name", "form_factor", "is_robot", "is_tablet"]);
+            asrt.deepEqual(client.reqStaticCaps, ['marketing_name', 'brand_name','model_name', 'is_tablet']);
+            asrt.deepEqual(client.reqVCaps, ['is_full_desktop', 'form_factor','is_robot']);
             done();
         });
         it('should discard non existing capability names when setting the required capabilities arrays', function (done) {
-            client.setRequestedStaticCapabilities(['brand_name', 'model_name', 'xhtml_support_level', 'wrong_cap']);
-            client.setRequestedVirtualCapabilities(['is_app','wrong_vcap', 'wrong_vcap 2']);
+            client.setRequestedStaticCapabilities(['brand_name', 'model_name', 'marketing_name', 'wrong_cap']);
+            client.setRequestedVirtualCapabilities(['is_robot','wrong_vcap', 'wrong_vcap 2']);
             client.lookupDeviceID('nokia_generic_series40', function (device, error) {
                 asrt.isUndefined(error);
                 asrt.isOk(device);

@@ -1,8 +1,10 @@
 {
   "name": "wmclient",
   "description": "Client implementation for WURFL microservice",
-  "version": "2.0.0",
+  "version": "2.0.1",
+  "license": "Apache-2.0",
   "main": "./wmclient.js",
+  "repository": "https://github.com/WURFL/wurfl-microservice-client-nodejs",
   "author": {
     "name": "Andrea Castello, ScientiaMobile Inc.",
     "email": "support@scientiamobile.com"
@@ -13,7 +15,7 @@
     "client"
   ],
   "dependencies": {
-    "unirest": "0.5.1",
+    "unirest": "0.6.0",
     "lru-cache": "4.1.1"
   },
   "bugs": {
@@ -23,8 +25,8 @@
     "test": "mocha"
   },
   "devDependencies": {
-    "chai": "^4.1.2",
-    "mocha": "^3.5",
+    "chai": "^4.2.0",
+    "mocha": "^6.2.2",
     "mocha-teamcity-reporter": "^1.1.1"
   }
 }
