@@ -5,3 +5,7 @@
 2.0.1
 ------------------------------------
 - Updated unirest and mocha to latest versions
+
+2.0.2
+------------------------------------
+- updated version number
