@@ -13,6 +13,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
+var connPort = process.env.WM_PORT;
+if (connPort == undefined || connPort == ""){
+    connPort = '8080'
+}
+
 var asrt = require('chai').assert;
 var wmClient = require('../wmclient');
 var http = require('http');
@@ -27,7 +32,7 @@ describe('WM Client tests', function () {
     before(function () {
         // log running node version for tests
         console.log('Running on node v ' + process.version);
-        wmClient.create('http:', 'localhost', '8080', '', function (result) {
+        wmClient.create('http:', 'localhost', connPort, '', function (result) {
             client = result;
         });
     });
@@ -35,7 +40,7 @@ describe('WM Client tests', function () {
     // test that don't use the shared client
     describe('#Create successful', function () {
         it('should pass when schema, host and port are provided', function (done) {
-            wmClient.create('http:', 'localhost', '8080', '', function (result) {
+            wmClient.create('http:', 'localhost', connPort, '', function (result) {
                 asrt.isAbove(result.importantHeaders.length, 0);
                 asrt.isAbove(result.virtualCaps.length, 0);              
                 asrt.isAbove(result.staticCaps.length, 0);
@@ -44,7 +49,7 @@ describe('WM Client tests', function () {
         });
 
         it('should pass when schema is provided without the column', function (done) {
-            wmClient.create('http', 'localhost', '8080', '', function (result) {
+            wmClient.create('http', 'localhost', connPort, '', function (result) {
                 asrt.isAbove(result.importantHeaders.length, 0);
                 asrt.isAbove(result.virtualCaps.length, 0);
                 asrt.isAbove(result.staticCaps.length, 0);
@@ -53,7 +58,7 @@ describe('WM Client tests', function () {
         });
 
         it('should pass when schema is not passed, defaulting to http', function (done) {
-            wmClient.create('', 'localhost', '8080', '', function (result) {
+            wmClient.create('', 'localhost', connPort, '', function (result) {
                 asrt.isAbove(result.importantHeaders.length, 0);
                 asrt.isAbove(result.virtualCaps.length, 0);
                 asrt.isAbove(result.staticCaps.length, 0);
@@ -62,7 +67,7 @@ describe('WM Client tests', function () {
         });
 
         it('should pass when host is not passed, defaulting to localhost', function (done) {
-            wmClient.create('http:', '', '8080', '', function (result) {
+            wmClient.create('http:', '', connPort, '', function (result) {
                 asrt.isAbove(result.importantHeaders.length, 0);
                 asrt.isAbove(result.virtualCaps.length, 0);
                 asrt.isAbove(result.staticCaps.length, 0);
@@ -75,7 +80,7 @@ describe('WM Client tests', function () {
         it('should throw error when protocol is not supported', function (done) {
             // Since assert.throws needs the reference to a parameterless function, we wrap create into it.
             var wrapper = function () {
-                wmClient.create('smtp', 'localhost', '8080', '', function () {
+                wmClient.create('smtp', 'localhost', connPort, '', function () {
                 });
             };
 
@@ -96,7 +101,7 @@ describe('WM Client tests', function () {
         });
         it('should throw error when host is wrong', function (done) {
 
-            wmClient.create('http:', 'wrong_host', '8080', '',
+            wmClient.create('http:', 'wrong_host', connPort, '',
 
                 function (undefined, error) {
                     asrt.isOk(error);
@@ -109,7 +114,7 @@ describe('WM Client tests', function () {
 
     describe('#HasStaticCapability', function () {
         it('should return true when capability is exposed by the WM server, false otherwise', function (done) {
-            wmClient.create('http:', 'localhost', '8080', '', function (result) {
+            wmClient.create('http:', 'localhost', connPort, '', function (result) {
                 asrt.isOk(result.hasStaticCapability('brand_name'));
                 asrt.isOk(result.hasStaticCapability('model_name'));
                 asrt.isOk(result.hasStaticCapability('is_smarttv'));
@@ -124,7 +129,7 @@ describe('WM Client tests', function () {
 
     describe('#HasVirtualCapability', function () {
         it('should return true when a virtual capability is exposed by the WM server, false otherwise', function (done) {
-            wmClient.create('http:', 'localhost', '8080', '', function (result) {
+            wmClient.create('http:', 'localhost', connPort, '', function (result) {
                 asrt.isOk(result.hasVirtualCapability('is_robot'));
                 asrt.isOk(result.hasVirtualCapability('is_smartphone'));
                 asrt.isOk(result.hasVirtualCapability('form_factor'));
@@ -281,7 +286,7 @@ describe('WM Client tests', function () {
             var options = {
                 protocol: 'http:',
                 host: 'localhost',
-                port: '8080',
+                port: connPort,
                 method: 'POST',
                 path: '/',
             };
@@ -315,7 +320,7 @@ describe('WM Client tests', function () {
             var options = {
                 protocol: 'http:',
                 host: 'localhost',
-                port: '8080',
+                port: connPort,
                 method: 'POST',
                 path: '/',
             };
@@ -353,7 +358,7 @@ describe('WM Client tests', function () {
             var options = {
                 protocol: 'http:',
                 host: 'localhost',
-                port: '8080',
+                port: connPort,
                 method: 'POST',
                 path: '/',
             };
