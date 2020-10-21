@@ -536,34 +536,39 @@ describe('WM Client tests', function () {
     describe('#Cache usage test', function () {
         it('should show that cache usage is at least one order of magnitude faster than detection without cache',
             function (done) {
-                client = wmClient.create('http:', 'localhost', '8080', '', function (result) {
+                wmClient.create('http:', 'localhost', '8080', '', function (client) {
                     ua = 'Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36'
                     let detectionCount = 10000
-
+                    let totalDetectionTime = 0
+                    let totalCacheTime = 0
                     let startTime = process.hrtime.bigint()
                     for (let i = 0; i < detectionCount; i++) {
-                        client.lookupUserAgent(function (result) {
+                        client.lookupUserAgent(ua,function (device) {
+                            if (i === detectionCount -1){
+                                totalDetectionTime = process.hrtime.bigint() - startTime
+                                // let's add the cache and fill it
+                                client.setCacheSize(10000)
+                                for (let j = 0; j < detectionCount; j++) {
+                                    client.lookupUserAgent(ua,function (device) {
+                                        if (j === detectionCount - 1){
+                                            let startTimeCache = process.hrtime.bigint()
+                                            for (let k = 0; k < detectionCount; k++){
+                                                client.lookupUserAgent(ua, function (device){
+                                                    if(k === detectionCount -1){
+                                                        totalCacheTime = process.hrtime.bigint() - startTimeCache
+                                                        let avgDetectionTime = totalDetectionTime / BigInt(detectionCount)
+                                                        let avgCacheTime = totalCacheTime / BigInt(detectionCount)
+                                                        let passed = avgDetectionTime > avgCacheTime * 10
+                                                        asrt.isTrue(passed)
+                                                    }
+                                                })
+                                            }
+                                        }
+                                    })
+                                }
+                            }
                         })
                     }
-                    let totalDetectionTime = process.hrtime.bigint() - startTime
-                    let avgDetectionTime = totalDetectionTime / detectionCount
-
-                    // let's add the cache and fill it
-                    client.setCacheSize(10000)
-                    for (let i = 0; i < detectionCount; i++) {
-                        client.lookupUserAgent(function (result) {
-                        })
-                    }
-
-                    // test cache times
-                    startTime = process.hrtime.bigint()
-                    for (let i = 0; i < detectionCount; i++) {
-                        client.lookupUserAgent(function (result) {
-                        })
-                    }
-                    let totalCacheTime = process.hrtime.bigint() - startTime
-                    let avgCacheTime = totalCache / detectionCount
-                    asrt.isTrue(avgDetectionTime > avgCacheTime * 10)
                     done();
                 });
             });
@@ -572,7 +577,7 @@ describe('WM Client tests', function () {
 
 function arrayIncludes(arr, text) {
     if (arr !== undefined) {
-        for (var i = 0; i < arr.length; i++) {
+        for (let i = 0; i < arr.length; i++) {
             if (arr[i] === text) {
                 return true;
             }
