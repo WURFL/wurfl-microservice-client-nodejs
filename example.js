@@ -16,6 +16,7 @@
 
 // this must be used when executing directly from source code downloaded from git repo
 var client = require('./src/app/wmclient');
+var http = require('http');
 
 // this must be used when executing the example by installing wmclient using  "npm install wmclient"
 // var client = require('wmclient');
@@ -49,14 +50,44 @@ client.create('http:', 'localhost', '8080', '', function (result, error) {
             console.log('WM server version: ' + info.wmVersion);
             console.log('WURFL file info:' + info.wurflInfo + '\n');
 
-            var ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3';
-            console.log('Getting device by User-Agent: ' + ua + '\n');
+            //var ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3';
+            //console.log('Getting device by User-Agent: ' + ua + '\n');
             // set the capabilities we want to receive from WM server
             result.setRequestedStaticCapabilities(['brand_name', 'model_name']);
             result.setRequestedVirtualCapabilities(['is_mobile', 'form_factor', 'is_smartphone', 'is_app']);
             // Perform a device detection calling WM server API
-            result.lookupUserAgent(ua, function (device, error) {
+            //result.lookupUserAgent(ua, function (device, error) {
 
+            // Perform a detection using passing a whole HTTP request to WM server API
+            // When building a request object for node, headers must be lowercase, according to Node standard
+            let req_headers = {
+                'accept':'text/html, application/xml;q=0.9, application/xhtml+xml, image/png, image/webp, image/jpeg, image/gif, image/x-xbitmap, */*;q=0.1',
+                'accept-encoding':'gzip, deflate',
+                'accept-language':'en',
+                'device-stock-ua':'Mozilla/5.0 (Linux; Android 8.1.0; SM-J610G Build/M1AJQ; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/69.0.3497.100 Mobile Safari/537.36',
+                'forwarded':'for=\"110.54.224.195:36350\'',
+                'referer':'https://www.cram.com/flashcards/labor-and-delivery-questions-889210',
+                'save-data':'on',
+                'User-Agent':'Opera/9.80 (Android; Opera Mini/51.0.2254/184.121; U; en) Presto/2.12.423 Version/12.16',
+                'x-clacks-overhead':'GNU ph',
+                'x-forwarded-for':'110.54.224.195, 82.145.210.235',
+                'x-operamini-features':'advanced, camera, download, file_system, folding, httpping, pingback, routing, touch, viewport',
+                'x-operamini-phone':'Android #',
+                'x-operamini-phone-Ua':'Mozilla/5.0 (Linux; Android 8.1.0; SM-J610G Build/M1AJQ; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/69.0.3497.100 Mobile Safari/537.36',
+            };
+            let options = {
+                protocol: 'http:',
+                host: 'localhost',
+                port: '8080',
+                method: 'POST',
+                path: '/',
+            };
+
+            let req = http.request(options);
+            req.headers = req_headers
+            req.end();
+
+            result.lookupRequest(req, function (device, error) {
                 if (error !== undefined) {
                     console.log('[ERROR]: ' + error.message);
                     return;
@@ -110,8 +141,12 @@ client.create('http:', 'localhost', '8080', '', function (result, error) {
                 // Sort modelMktNames by their model name
                 modelMktNames.sort(compare);
                 console.log("Print all Model for the Apple Brand");
-                for (var i = 0; i < modelMktNames.length; i++) {
-                    console.log(" - " + modelMktNames[i].modelName + " " +  modelMktNames[i].marketingName);
+                for (let i = 0; i < modelMktNames.length; i++) {
+                    let n = " - " + modelMktNames[i].modelName
+                    if (modelMktNames[i].marketingName!== undefined){
+                        n += modelMktNames[i].marketingName
+                    }
+                    console.log(n);
                 }
             });
 
