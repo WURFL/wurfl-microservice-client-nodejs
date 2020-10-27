@@ -15,11 +15,11 @@
  */
 
 // this must be used when executing directly from source code downloaded from git repo
-var client = require('./src/app/wmclient');
+// var client = require('./src/app/wmclient');
 var http = require('http');
 
 // this must be used when executing the example by installing wmclient using  "npm install wmclient"
-// var client = require('wmclient');
+var client = require('wmclient');
 
 console.log('Running with node version ' + process.version)
 

@@ -483,7 +483,7 @@ WmClient.prototype.genericRequest = function (options, reqData, parseCb, resultC
  * getApiVersion, returns the API version
  * @returns {string}
  */
-WmClient.prototype.getApiVersion = function () { return "2.0.2"; };
+WmClient.prototype.getApiVersion = function () { return "2.1.0"; };
 
 WmClient.prototype.clearCaches = function () {
     if (!isUndefined(this.uaCache)) {

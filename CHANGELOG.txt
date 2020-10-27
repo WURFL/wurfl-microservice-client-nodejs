@@ -1,11 +1,16 @@
-2.0.0
+2.1.0
 ------------------------------------
-- First public version. Provides getInfo and lookup* and functions
+- added cache usage test
+- modified example app
+
+2.0.2
+------------------------------------
+- updated version number
 
 2.0.1
 ------------------------------------
 - Updated unirest and mocha to latest versions
 
-2.0.2
+2.0.0
 ------------------------------------
-- updated version number
+- First public version. Provides getInfo and lookup* and functions
