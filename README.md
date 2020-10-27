@@ -145,5 +145,37 @@ client.create('http:', 'localhost', '8080', '', function (result, error) {
 
 All the calls to WM client API functions accept a callback function that handle a result parameter and an error one. If the error parameter has a value, there are no device data available and the message reports the cause that made the data unavailable (ie: you provided empty or invalid input, or there has been a connection issue between client and server).
 
+Example api use looking up using all the HTTP headers:
 
+```
+let req_headers = {
+                'accept':'text/html, application/xml;q=0.9, application/xhtml+xml, image/png, image/webp, image/jpeg, image/gif, image/x-xbitmap, */*;q=0.1',
+                'accept-encoding':'gzip, deflate',
+                'accept-language':'en',
+                'device-stock-ua':'Mozilla/5.0 (Linux; Android 8.1.0; SM-J610G Build/M1AJQ; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/69.0.3497.100 Mobile Safari/537.36',
+                'forwarded':'for=\"110.54.224.195:36350\'',
+                'referer':'https://www.cram.com/flashcards/labor-and-delivery-questions-889210',
+                'save-data':'on',
+                'user-agent':'Opera/9.80 (Android; Opera Mini/51.0.2254/184.121; U; en) Presto/2.12.423 Version/12.16',
+                'x-clacks-overhead':'GNU ph',
+                'x-forwarded-for':'110.54.224.195, 82.145.210.235',
+                'x-operamini-features':'advanced, camera, download, file_system, folding, httpping, pingback, routing, touch, viewport',
+                'x-operamini-phone':'Android #',
+                'x-operamini-phone-Ua':'Mozilla/5.0 (Linux; Android 8.1.0; SM-J610G Build/M1AJQ; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/69.0.3497.100 Mobile Safari/537.36',
+            };
+            let options = {
+                protocol: 'http:',
+                host: 'localhost',
+                port: '8080',
+                method: 'POST',
+                path: '/',
+            };
 
+            let req = http.request(options);
+            req.headers = req_headers
+            req.end();
+
+            result.lookupRequest(req, function (device, error) {
+                // handle result or error
+            }
+```
