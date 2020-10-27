@@ -68,7 +68,7 @@ client.create('http:', 'localhost', '8080', '', function (result, error) {
                 'forwarded':'for=\"110.54.224.195:36350\'',
                 'referer':'https://www.cram.com/flashcards/labor-and-delivery-questions-889210',
                 'save-data':'on',
-                'User-Agent':'Opera/9.80 (Android; Opera Mini/51.0.2254/184.121; U; en) Presto/2.12.423 Version/12.16',
+                'user-agent':'Opera/9.80 (Android; Opera Mini/51.0.2254/184.121; U; en) Presto/2.12.423 Version/12.16',
                 'x-clacks-overhead':'GNU ph',
                 'x-forwarded-for':'110.54.224.195, 82.145.210.235',
                 'x-operamini-features':'advanced, camera, download, file_system, folding, httpping, pingback, routing, touch, viewport',
