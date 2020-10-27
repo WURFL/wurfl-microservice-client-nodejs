@@ -37,7 +37,7 @@ describe('WM Client tests', function () {
         it('should pass when schema, host and port are provided', function (done) {
             wmClient.create('http:', 'localhost', '8080', '', function (result) {
                 asrt.isAbove(result.importantHeaders.length, 0);
-                asrt.isAbove(result.virtualCaps.length, 0);              
+                asrt.isAbove(result.virtualCaps.length, 0);
                 asrt.isAbove(result.staticCaps.length, 0);
                 done();
             });
@@ -79,7 +79,7 @@ describe('WM Client tests', function () {
                 });
             };
 
-            asrt.throws(wrapper, 'smtp:', 'not supported');
+            asrt.throws(wrapper, 'Protocol "smtp:" not supported');
             done();
         });
 
@@ -89,7 +89,7 @@ describe('WM Client tests', function () {
 
                 function (undefined, error) {
                     asrt.isOk(error);
-                    asrt.isTrue(error.message.indexOf('ECONNREFUSED')!==-1);
+                    asrt.isTrue(error.message.indexOf('ECONNREFUSED') !== -1);
                     done();
 
                 });
@@ -100,7 +100,7 @@ describe('WM Client tests', function () {
 
                 function (undefined, error) {
                     asrt.isOk(error);
-                    asrt.isTrue(error.message.indexOf('ENOTFOUND')!==-1);
+                    asrt.isTrue(error.message.indexOf('ENOTFOUND') !== -1);
 
                 });
             done();
@@ -193,13 +193,13 @@ describe('WM Client tests', function () {
         });
         it('should throw an error with message if device does not exist in server', function (done) {
 
-                client.lookupDeviceID('google_unexisting_id', function (device, error) {
+            client.lookupDeviceID('google_unexisting_id', function (device, error) {
 
-                        asrt.isOk(error);
-                        asrt.isUndefined(device);
-                        asrt.equal(client.getCapabilityCount(device), 0);
-                        asrt.isNotEmpty(error.message);
-                        done();
+                asrt.isOk(error);
+                asrt.isUndefined(device);
+                asrt.equal(client.getCapabilityCount(device), 0);
+                asrt.isNotEmpty(error.message);
+                done();
             });
         });
     });
@@ -372,13 +372,13 @@ describe('WM Client tests', function () {
     describe('#setRequestedCapability', function () {
         it('assign each capability in the given array to the proper specific array of static or virtual capabilities', function (done) {
             client.setRequestedCapabilities(["is_full_desktop", "marketing_name", "brand_name", "model_name", "form_factor", "is_robot", "is_tablet"]);
-            asrt.deepEqual(client.reqStaticCaps, ['marketing_name', 'brand_name','model_name', 'is_tablet']);
-            asrt.deepEqual(client.reqVCaps, ['is_full_desktop', 'form_factor','is_robot']);
+            asrt.deepEqual(client.reqStaticCaps, ['marketing_name', 'brand_name', 'model_name', 'is_tablet']);
+            asrt.deepEqual(client.reqVCaps, ['is_full_desktop', 'form_factor', 'is_robot']);
             done();
         });
         it('should discard non existing capability names when setting the required capabilities arrays', function (done) {
             client.setRequestedStaticCapabilities(['brand_name', 'model_name', 'marketing_name', 'wrong_cap']);
-            client.setRequestedVirtualCapabilities(['is_robot','wrong_vcap', 'wrong_vcap 2']);
+            client.setRequestedVirtualCapabilities(['is_robot', 'wrong_vcap', 'wrong_vcap 2']);
             client.lookupDeviceID('nokia_generic_series40', function (device, error) {
                 asrt.isUndefined(error);
                 asrt.isOk(device);
@@ -522,7 +522,7 @@ describe('WM Client tests', function () {
                 asrt.isArray(deviceOsVersions);
                 asrt.isAtLeast(deviceOsVersions.length, 30);
                 // WPC-154: client must strip empty OS versions from array
-                asrt.isNotOk(arrayIncludes(deviceOsVersions,""));
+                asrt.isNotOk(arrayIncludes(deviceOsVersions, ""));
                 done();
             });
         });
@@ -533,12 +533,52 @@ describe('WM Client tests', function () {
             });
         });
     });
+    describe('#Cache usage test', function () {
+        it('should show that cache usage is at least one order of magnitude faster than detection without cache',
+            function (done) {
+                wmClient.create('http:', 'localhost', '8080', '', function (client) {
+                    ua = 'Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36'
+                    let detectionCount = 10000
+                    let totalDetectionTime = 0
+                    let totalCacheTime = 0
+                    let startTime = process.hrtime.bigint()
+                    for (let i = 0; i < detectionCount; i++) {
+                        client.lookupUserAgent(ua,function (device) {
+                            if (i === detectionCount -1){
+                                totalDetectionTime = process.hrtime.bigint() - startTime
+                                // let's add the cache and fill it
+                                client.setCacheSize(10000)
+                                for (let j = 0; j < detectionCount; j++) {
+                                    client.lookupUserAgent(ua,function (device) {
+                                        if (j === detectionCount - 1){
+                                            let startTimeCache = process.hrtime.bigint()
+                                            for (let k = 0; k < detectionCount; k++){
+                                                client.lookupUserAgent(ua, function (device){
+                                                    if(k === detectionCount -1){
+                                                        totalCacheTime = process.hrtime.bigint() - startTimeCache
+                                                        let avgDetectionTime = totalDetectionTime / BigInt(detectionCount)
+                                                        let avgCacheTime = totalCacheTime / BigInt(detectionCount)
+                                                        let passed = avgDetectionTime > avgCacheTime * 10
+                                                        asrt.isTrue(passed)
+                                                    }
+                                                })
+                                            }
+                                        }
+                                    })
+                                }
+                            }
+                        })
+                    }
+                    done();
+                });
+            });
+    });
 }); // End of test suite
 
 function arrayIncludes(arr, text) {
     if (arr !== undefined) {
-        for (var i = 0; i < arr.length; i++) {
-            if (arr[i] === text){
+        for (let i = 0; i < arr.length; i++) {
+            if (arr[i] === text) {
                 return true;
             }
         }

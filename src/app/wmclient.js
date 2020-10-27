@@ -429,9 +429,9 @@ WmClient.prototype.genericRequest = function (options, reqData, parseCb, resultC
     // If the caller function uses a cache, try a cache lookup
     if(!isUndefined(cacheType)) {
         var cacheKey = this.getUserAgentCacheKey(reqData.lookup_headers);
-        if (cacheType == 'ua-cache' && !isUndefined(this.uaCache)) {
+        if (cacheType === 'ua-cache' && !isUndefined(this.uaCache)) {
             device = this.uaCache.get(cacheKey);
-        } else if (cacheType == 'dId-cache' && !isUndefined(this.devIdCache)) {
+        } else if (cacheType === 'dId-cache' && !isUndefined(this.devIdCache)) {
             cacheKey = reqData.wurfl_id;
             device = this.devIdCache.get(reqData.wurfl_id);
         }
@@ -483,7 +483,7 @@ WmClient.prototype.genericRequest = function (options, reqData, parseCb, resultC
  * getApiVersion, returns the API version
  * @returns {string}
  */
-WmClient.prototype.getApiVersion = function () { return "2.0.2"; };
+WmClient.prototype.getApiVersion = function () { return "2.1.0"; };
 
 WmClient.prototype.clearCaches = function () {
     if (!isUndefined(this.uaCache)) {
@@ -560,8 +560,10 @@ function isUndefined(value) {
 
 WmClient.prototype.getUserAgentCacheKey = function (headers) {
     var cacheKey = '';
-    for (i = 0; i <this.importantHeaders.length; i++){
-        var hval = headers[this.importantHeaders[i]];
+    var hname = ''
+    for (let i = 0; i <this.importantHeaders.length; i++){
+        hname = this.importantHeaders[i]
+        var hval = headers[hname];
         if(!isUndefined(hval)){
             cacheKey += hval;
         }
@@ -585,7 +587,7 @@ WmClient.prototype.addToCache = function(cacheType, cacheKey, result) {
     else if (cacheType === 'dId-cache'){
         this.safePut(cacheType, result.capabilities['wurfl_id'], result);
     }
-};
+}
 
 /**
  * SetHTTPTimeout sets the connection and transfer timeouts for this client in seconds.
