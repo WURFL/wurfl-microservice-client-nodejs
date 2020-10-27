@@ -147,7 +147,7 @@ All the calls to WM client API functions accept a callback function that handle 
 
 Example api use looking up using all the HTTP headers:
 
-```
+```javascript
 let req_headers = {
                 'accept':'text/html, application/xml;q=0.9, application/xhtml+xml, image/png, image/webp, image/jpeg, image/gif, image/x-xbitmap, */*;q=0.1',
                 'accept-encoding':'gzip, deflate',
