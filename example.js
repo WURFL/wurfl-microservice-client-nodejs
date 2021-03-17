@@ -104,6 +104,25 @@ const example = async () => {
                 console.log(" - " + deviceMakes[i]);
             }
         })
+
+        // Now call the WM server to get all device model and marketing names produced by Apple
+        let brandName = "Apple"
+        let devsForMakePromise = client.getAllDevicesForMake(brandName)
+        devsForMakePromise.then((modelMktNames) => {
+            // Sort modelMktNames by their model name
+            modelMktNames.sort(compare);
+            console.log("Print all Model for the Apple Brand");
+            for (let i = 0; i < modelMktNames.length; i++) {
+                let n = " - " + modelMktNames[i].modelName
+                if (modelMktNames[i].marketingName!== undefined){
+                    n += modelMktNames[i].marketingName
+                }
+                console.log(n);
+            }
+        }).catch((error) => {
+            console.log(`Error looking for  models for device, brand ${error.message}`)
+        })
+
     })
 }
 // Run the example
@@ -111,7 +130,7 @@ example().then().catch()
 
 // Comparator used to sort modelMktNames objects according to their model name property, for which is used the String natural ordering.
 function compare(a, b) {
-    var comparison = 0;
+    let comparison = 0;
     if (a.modelName > b.modelName) {
         comparison = 1;
     } else if (a.modelName < b.modelName) {

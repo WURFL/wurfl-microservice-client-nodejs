@@ -314,9 +314,9 @@ WmClient.prototype.getCapabilityCount = function (device) {
  * @param cb callback that will be ccalled with the API call result
  */
 
-WmClient.prototype.getAllDeviceMakes = function (cb) {
+WmClient.prototype.getAllDeviceMakes = function () {
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         let makeMapPromise = this.getDeviceMakesMap()
         makeMapPromise.then(deviceMakes => {
             deviceMakes = Object.keys(deviceMakes)
@@ -330,19 +330,22 @@ WmClient.prototype.getAllDeviceMakes = function (cb) {
 /**
  * getAllDevicesForMake Returns an array of an aggregate containing model_names + marketing_names for the given Make.
  * @param make
- * @param cb callback called on the API result
  */
-/*
-WmClient.prototype.getAllDevicesForMake = function (make, cb) {
-    this.getDeviceMakesMap(function(deviceMakesMap) {
-        var ob = deviceMakesMap[make];
-        if (isUndefined(ob)) {
-            return cb(new Error('WM server error : ' + make + ' does not exist'));
-        }
-        cb(undefined, ob)
-    })
-};
-*/
+
+WmClient.prototype.getAllDevicesForMake = function (make) {
+    let client = this
+    return new Promise(((resolve, reject) => {
+        let deviceMakesMapPromise = client.getDeviceMakesMap()
+        deviceMakesMapPromise.then((deviceMakesMap) => {
+            let ob = deviceMakesMap[make]
+            if (isUndefined(ob)) {
+                reject(new Error('WM server error : ' + make + ' does not exist'))
+            }
+            resolve(ob)
+        })
+    }))
+}
+
 
 WmClient.prototype.getDeviceMakesMap = function (cb) {
     let client = this;
