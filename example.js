@@ -21,8 +21,6 @@ const http = require("http");
 // Example of using the WURFL Microservice Client
 const example = async () => {
     console.log('Running with node version ' + process.version)
-    // Alternatively, you can create the client syncronously
-    // const wurflClient = client.createSync('http:', 'localhost', '8080', '')
     // First we need to create a WM client instance, to connect to our WM server API at the specified host and port.
     let client_promise
     try {
@@ -94,7 +92,30 @@ const example = async () => {
         }).catch((error) => {
             console.log('Error detecting device from given headers:  ' + error.message)
         })
+
+        // Get all the device manufacturers, and print the first twenty
+        let device_makes_promise = client.getAllDeviceMakes();
+        device_makes_promise.then((deviceMakes) => {
+            let limit = 20;
+            console.log("Print the first " + limit + " Brand of " + deviceMakes.length);
+            // Sort the device manufacturer names
+            deviceMakes.sort();
+            for (let i = 0; i < limit; i++) {
+                console.log(" - " + deviceMakes[i]);
+            }
+        })
     })
 }
 // Run the example
 example().then().catch()
+
+// Comparator used to sort modelMktNames objects according to their model name property, for which is used the String natural ordering.
+function compare(a, b) {
+    var comparison = 0;
+    if (a.modelName > b.modelName) {
+        comparison = 1;
+    } else if (a.modelName < b.modelName) {
+        comparison = -1;
+    }
+    return comparison;
+}

@@ -313,13 +313,18 @@ WmClient.prototype.getCapabilityCount = function (device) {
  * getAllDeviceMakes returns identity data for all devices in WM server
  * @param cb callback that will be ccalled with the API call result
  */
-/*
+
 WmClient.prototype.getAllDeviceMakes = function (cb) {
-    this.getDeviceMakesMap(function(deviceMakesMap) {
-        cb(Object.keys(deviceMakesMap))
+
+    return new Promise((resolve, reject) => {
+        let makeMapPromise = this.getDeviceMakesMap()
+        makeMapPromise.then(deviceMakes => {
+            deviceMakes = Object.keys(deviceMakes)
+            resolve(deviceMakes)
+        })
     })
-};
- */
+}
+
 
 
 /**
@@ -338,53 +343,40 @@ WmClient.prototype.getAllDevicesForMake = function (make, cb) {
     })
 };
 */
-/*
+
 WmClient.prototype.getDeviceMakesMap = function (cb) {
-    var client = this;
-    var options = client.getOptions('/v2/alldevices/json', 'GET');
+    let client = this;
 
     // Check if we have a value for deviceMakesMap
     if (!isUndefined(client.deviceMakesMap) && client.deviceMakesMap.length > 0) {
         // This returns a deep copy of make model, so that any changes to it are not reflected into our cached value
-        return cb(JSON.parse(JSON.stringify(client.deviceMakesMap)))
+        let map_copy = cb(JSON.parse(JSON.stringify(client.deviceMakesMap)))
+        return Promise.resolve(map_copy)
     }
 
-    var req = http.request(options, function (res) {
-        var body = '';
-        res.on('data', function (chunk) {
-            body += chunk;
-        });
-
-        res.on('end', function () {
-            var data = JSON.parse(body);
-            var deviceMakesMap = {};
-            for (var i = 0; i < data.length; i++) {
-                var bn = data[i].brand_name;
+    return new Promise((resolve) => {
+        let fullUrl = client.createFullUrl('/v2/alldevices/json')
+        let allDevicesPromise = getJSON(fullUrl)
+        allDevicesPromise.then(devices => {
+            let deviceMakesMap = {}
+            for (let i = 0; i < devices.length; i++) {
+                let bn = devices[i].brand_name;
                 if (isUndefined(bn) || bn === null || bn === "") {
                     continue;
                 }
 
-                var modelMktName = new model.JSONModelMktName(
-                    data[i].model_name,
-                    data[i].marketing_name);
-                if (isUndefined(deviceMakesMap[data[i].brand_name])) {
-                    deviceMakesMap[data[i].brand_name] = [];
+                let modelMktName = new model.JSONModelMktName(devices[i].model_name, devices[i].marketing_name)
+                if (isUndefined(deviceMakesMap[devices[i].brand_name])) {
+                    deviceMakesMap[devices[i].brand_name] = [];
                 }
-                deviceMakesMap[data[i].brand_name].push(modelMktName);
+                deviceMakesMap[devices[i].brand_name].push(modelMktName);
             }
-
             client.deviceMakesMap = JSON.parse(JSON.stringify(deviceMakesMap));
+            resolve(deviceMakesMap)
+        })
+    })
+}
 
-            return cb(deviceMakesMap);
-        });
-    });
-    req.on('error', function (e) {
-        return resultCb(e, null)
-    });
-
-    req.end();
-};
-*/
 /**
  * getAllOSes returns of all devices device_os capabilities
  * @param cb
