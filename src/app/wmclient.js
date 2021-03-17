@@ -96,19 +96,8 @@ WmClient.prototype.createFullUrl = function (path) {
 WmClient.prototype.getInfo = async function () {
 
     let full_url = this.createFullUrl('/v2/getinfo/json')
-    return new Promise((resolve, reject) => {
-        let info_promise = getJSON(full_url)
-        info_promise.then((info) => {
-            let parsedInfo = parseInfo(info)
-            resolve(parsedInfo)
-        }).catch((error) => {
-            reject(new Error('Unable to get WURFL Microservice server info ' + error.message))
-        })
-    })
-
-
-
-
+    let info_response = await getJSON(full_url)
+    return parseInfo(info_response)
 }
 
 WmClient.prototype.internalGetInfo = async function () {
@@ -152,24 +141,6 @@ async function create(scheme, host, port, baseURI) {
 
 WmClient.prototype.createUrl = function (path) {
     return this.scheme + '//' + this.host + ':' + this.port + this.createPath(path)
-}
-
-WmClient.prototype.newRequest = function (method, path, data) {
-    const req = {
-        host: this.host,
-        port: this.port,
-        method: method,
-        url: this.createUrl(path),
-        timeout: this.httpTimeout,
-        headers: {
-            'Content-Type': 'application/json'
-        },
-    }
-
-    if (data != null) {
-        req.data = JSON.stringify(data)
-    }
-    return req
 }
 
 checkData = (jsonInfoData) => {

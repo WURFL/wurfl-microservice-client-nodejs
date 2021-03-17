@@ -29,20 +29,20 @@ const example = async () => {
         console.log('[ERROR]: ' + error.message)
         process.exit(1)
     }
-    client_promise.then((client) => {
+    client_promise.then(async (client) => {
         console.log('wm created, printing some data');
         console.log('Static capabilities loaded: ' + client.staticCaps.length);
         console.log('Virtual capabilities loaded: ' + client.virtualCaps.length + '\n');
 
-        let info_promise = client.getInfo()
-        info_promise.then(info => {
-            console.log('Server info: \n');
-            console.log('WURFL API version: ' + info.wurflAPIVersion);
-            console.log('WM server version: ' + info.wmVersion);
-            console.log('WURFL file info:' + info.wurflInfo + '\n');
-        }).catch(() => {
+        try {
+            let info = await client.getInfo()
+            console.log('Server info: \n')
+            console.log('WURFL API version: ' + info.wurflAPIVersion)
+            console.log('WM server version: ' + info.wmVersion)
+            console.log('WURFL file info:' + info.wurflInfo + '\n')
+        } catch(error) {
             console.log("Unable to load WURFL Info")
-        })
+        }
 
         // Perform a detection using passing a whole HTTP request to WM server API
         // When building a request object for node, headers must be lowercase, according to Node standard
