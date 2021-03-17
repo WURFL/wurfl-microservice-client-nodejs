@@ -100,11 +100,6 @@ WmClient.prototype.getInfo = async function () {
     return parseInfo(info_response)
 }
 
-WmClient.prototype.internalGetInfo = async function () {
-    let full_url = this.createFullUrl('/v2/getinfo/json')
-    return getJSON(full_url)
-}
-
 /**
  * Create a WMClient
  * @param scheme
@@ -124,19 +119,14 @@ async function create(scheme, host, port, baseURI) {
         sc = 'http:'
     }
 
-    return new Promise((resolve, reject) => {
-            const client = new WmClient(sc, host, port, baseURI);
-            let info_promise = client.internalGetInfo()
-            info_promise.then((response) => {
-                let info = parseInfo(response)
-                client.importantHeaders = info.importantHeaders
-                client.staticCaps = info.staticCaps
-                client.virtualCaps = info.virtualCaps
-                client.staticCaps.sort()
-                client.virtualCaps.sort()
-                resolve(client)
-            })
-        })
+    const client = new WmClient(sc, host, port, baseURI);
+    let info = await client.getInfo()
+    client.importantHeaders = info.importantHeaders
+    client.staticCaps = info.staticCaps
+    client.virtualCaps = info.virtualCaps
+    client.staticCaps.sort()
+    client.virtualCaps.sort()
+    return client
 }
 
 WmClient.prototype.createUrl = function (path) {
