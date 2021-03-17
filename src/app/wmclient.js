@@ -13,9 +13,12 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-var http = require('http');
-var model = require('./model');
-var LRU  = require('lru-cache');
+const bent = require('bent')
+const getJSON = bent('json')
+const model = require('./model');
+const LRU = require('lru-cache');
+const CACHE_TYPE_HEADERS = 'ua-cache'
+const CACHE_TYPE_DEVICE_ID = 'dId-cache'
 
 /**
  * WmClient holds http connection data to server and the list capability it must return in response
@@ -26,21 +29,20 @@ var LRU  = require('lru-cache');
  * @constructor
  */
 function WmClient(scheme, host, port, baseURI) {
-    this.scheme = scheme,
-        this.host = host;
-    this.port = port;
-    this.baseURI = baseURI;
-    this.importantHeaders = '';
-    this.virtualCaps = [];
-    this.staticCaps = [];
-    this.reqVCaps = [];
-    this.reqStaticCaps = [];
-    this.uaCache;
-    this.devIdCache;
+    this.scheme = scheme
+    this.host = host
+    this.port = port
+    this.baseURI = baseURI
+    this.importantHeaders
+    this.virtualCaps = []
+    this.staticCaps = []
+    this.reqVCaps = []
+    this.reqStaticCaps = []
+    this.uaCache = undefined
+    this.devIdCache = undefined
     this.httpTimeout = 10000;
-
-    this.deviceMakesMap;
-    this.deviceOsVerMap;
+    this.deviceMakesMap = {}
+    this.deviceOsVerMap = {}
 }
 
 /**
@@ -49,13 +51,14 @@ function WmClient(scheme, host, port, baseURI) {
  * @param resultCallback
  * @returns {JSONDeviceData}
  */
-WmClient.prototype.lookupUserAgent = function (userAgent, resultCallback) {
-    var options = this.getOptions('/v2/lookupuseragent/json', 'POST');
+WmClient.prototype.lookupUserAgent = async (userAgent, resultCallback) => {
 
-    var lHeaders = {'User-Agent': userAgent};
-    var reqData = new model.Request(lHeaders, this.reqStaticCaps, this.reqVCaps);
-    this.genericRequest(options, reqData, parseDevice, resultCallback, "ua-cache", this);
-};
+
+    let lHeaders = {'User-Agent': userAgent};
+    let reqData = new model.Request(lHeaders, this.reqStaticCaps, this.reqVCaps);
+    return this.genericRequest('POST', '/v2/lookupuseragent/json', reqData, parseDevice, resultCallback, CACHE_TYPE_HEADERS);
+}
+
 
 /**
  * lookupDeviceID - Searches WURFL device data using its wurfl_id value
@@ -63,34 +66,55 @@ WmClient.prototype.lookupUserAgent = function (userAgent, resultCallback) {
  * @param cb
  * @returns {JSONDeviceData}
  */
+/*
 WmClient.prototype.lookupDeviceID = function (wurflId, cb) {
     var options = this.getOptions('/v2/lookupdeviceid/json', 'POST');
 
     var lHeaders = {};
     var reqData = new model.Request(lHeaders, this.reqStaticCaps, this.reqVCaps, wurflId);
-    this.genericRequest(options, reqData, parseDevice, cb, "dId-cache", this);
+    this.genericRequest(options, reqData, parseDevice, cb, CACHE_TYPE_DEVICE_ID, this);
 };
-
+*/
 
 WmClient.prototype.createPath = function (path) {
 
     if (this.baseURI.length > 0) {
-        return "/" + this.baseURI + path;
+        return "/" + this.baseURI + path
     } else {
-        return path;
+        return path
     }
-};
+}
+
+WmClient.prototype.createFullUrl = function (path) {
+    return this.scheme + '//' + this.host + ':' + this.port + this.createPath(path)
+}
 
 /**
  * getInfo - Returns information about the running WM server and API
- * @param cb
  * @returns {JSONInfoData}
  */
-WmClient.prototype.getInfo = function (cb) {
-    var path = this.createPath('/v2/getinfo/json');
-    var options = this.getOptions(path, 'GET');
-    this.genericRequest(options, '', parseInfo, cb, undefined, this);
-};
+WmClient.prototype.getInfo = async function () {
+
+    let full_url = this.createFullUrl('/v2/getinfo/json')
+    return new Promise((resolve, reject) => {
+        let info_promise = getJSON(full_url)
+        info_promise.then((info) => {
+            let parsedInfo = parseInfo(info)
+            resolve(parsedInfo)
+        }).catch((error) => {
+            reject(new Error('Unable to get WURFL Microservice server info ' + error.message))
+        })
+    })
+
+
+
+
+}
+
+WmClient.prototype.internalGetInfo = async function () {
+    let full_url = this.createFullUrl('/v2/getinfo/json')
+    return getJSON(full_url)
+}
 
 /**
  * Create a WMClient
@@ -100,55 +124,60 @@ WmClient.prototype.getInfo = function (cb) {
  * @param baseURI
  * @param cb
  */
-function create(scheme, host, port, baseURI, cb) {
-    var sc = scheme;
+async function create(scheme, host, port, baseURI) {
+    let sc = scheme
     if (scheme.length > 0) {
-        sc = scheme;
+        sc = scheme
         if (!endsWith(sc, ":")) {
-            sc += ":";
+            sc += ":"
         }
     } else {
-        sc = 'http:';
+        sc = 'http:'
     }
 
-    var client = new WmClient(sc, host, port, baseURI);
-    // Test server connection and save important headers taken using getInfo function
-    var data;
-    client.getInfo(function (result, error) {
-        if(!isUndefined(error)){
-            return cb(undefined, error)
-        }
-
-        data = result;
-        client.importantHeaders = data.importantHeaders;
-        client.staticCaps = data.staticCaps;
-        client.virtualCaps = data.virtualCaps;
-        client.staticCaps.sort();
-        client.virtualCaps.sort();
-        cb(client, undefined);
-    });
+    return new Promise((resolve, reject) => {
+            const client = new WmClient(sc, host, port, baseURI);
+            let info_promise = client.internalGetInfo()
+            info_promise.then((response) => {
+                let info = parseInfo(response)
+                client.importantHeaders = info.importantHeaders
+                client.staticCaps = info.staticCaps
+                client.virtualCaps = info.virtualCaps
+                client.staticCaps.sort()
+                client.virtualCaps.sort()
+                resolve(client)
+            })
+        })
 }
 
-WmClient.prototype.getOptions = function (path, method) {
-    return {
-        protocol: this.scheme,
+WmClient.prototype.createUrl = function (path) {
+    return this.scheme + '//' + this.host + ':' + this.port + this.createPath(path)
+}
+
+WmClient.prototype.newRequest = function (method, path, data) {
+    const req = {
         host: this.host,
         port: this.port,
         method: method,
-        path: path,
+        url: this.createUrl(path),
         timeout: this.httpTimeout,
         headers: {
             'Content-Type': 'application/json'
-        }
-    };
-};
+        },
+    }
 
-checkData = function (jsonInfoData) {
+    if (data != null) {
+        req.data = JSON.stringify(data)
+    }
+    return req
+}
+
+checkData = (jsonInfoData) => {
     return jsonInfoData.wmVersion.length > 0 &&
         jsonInfoData.wurflAPIVersion.length > 0 &&
         jsonInfoData.wurflInfo.length > 0 &&
         jsonInfoData.staticCaps.length > 0;
-};
+}
 
 /**
  * setRequestedCapabilities - set the given capability names to the set they belong
@@ -163,12 +192,12 @@ WmClient.prototype.setRequestedCapabilities = function (caps) {
         return;
     }
 
-    var capNames = [];
-    var vcapNames = [];
+    let capNames = [];
+    let vcapNames = [];
 
-    for (var i=0; i< caps.length; i++)
+    for (let i=0; i< caps.length; i++)
     {
-        var name = caps[i];
+        let name = caps[i];
         if (this.hasStaticCapability(name))
         {
             capNames.push(name);
@@ -180,12 +209,13 @@ WmClient.prototype.setRequestedCapabilities = function (caps) {
     }
     this.reqStaticCaps = capNames;
     this.reqVCaps = vcapNames;
-};
+}
 
 /**
  * setRequestedStaticCapabilities - set list of static capabilities to return
  * @param stCaps
  */
+
 WmClient.prototype.setRequestedStaticCapabilities = function (stCaps) {
 
     if(isUndefined(stCaps) || stCaps === null){
@@ -194,23 +224,24 @@ WmClient.prototype.setRequestedStaticCapabilities = function (stCaps) {
         return;
     }
 
-    var capNames = [];
+    let capNames = [];
 
-    for (var i=0; i< stCaps.length; i++)
+    for (let i=0; i< stCaps.length; i++)
     {
-        var name = stCaps[i];
+        let name = stCaps[i];
         if (this.hasStaticCapability(name))
         {
             capNames.push(name);
         }
     }
     this.reqStaticCaps = capNames;
-};
+}
 
 /**
  * setRequestedVirtualCapabilities - set list of virtual capabilities to return
  * @param stCaps
  */
+
 WmClient.prototype.setRequestedVirtualCapabilities = function (vCaps) {
 
     if(isUndefined(vCaps) || vCaps === null){
@@ -221,16 +252,16 @@ WmClient.prototype.setRequestedVirtualCapabilities = function (vCaps) {
 
     var vcapNames = [];
 
-    for (var i=0; i< vCaps.length; i++)
+    for (let i=0; i< vCaps.length; i++)
     {
-        var name = vCaps[i];
+        let name = vCaps[i];
         if (this.hasVirtualCapability(name))
         {
             vcapNames.push(name);
         }
     }
     this.reqVCaps = vcapNames;
-};
+}
 
 /**
  * lookupRequest - detects a device and returns its data in JSON format
@@ -238,29 +269,28 @@ WmClient.prototype.setRequestedVirtualCapabilities = function (vCaps) {
  * @param cb callback function that will be executed with the resulting JSONDeviceData structure
  * @returns {JSONDeviceData}
  */
-WmClient.prototype.lookupRequest = function (nodeReq, cb) {
+WmClient.prototype.lookupRequest = async function(nodeReq)  {
     // copy headers
-    var lookupHeaders = {};
-    for (var i = 0; i < this.importantHeaders.length; i++) {
-        var name = this.importantHeaders[i];
-        var h = nodeReq.headers[name.toLowerCase()];
+    let lookupHeaders = {};
+    for (let i = 0; i < this.importantHeaders.length; i++) {
+        let name = this.importantHeaders[i];
+        let h = nodeReq.headers[name.toLowerCase()];
         if (!isUndefined(h) && h.length > 0) {
             lookupHeaders[name] = h;
         }
     }
-    var wmReq = new model.Request(lookupHeaders, this.reqStaticCaps, this.reqVCaps);
-    var options = this.getOptions('/v2/lookuprequest/json', 'POST');
-    this.genericRequest(options, wmReq, parseDevice, cb, "ua-cache", this);
-};
+    let wmReq = new model.Request(lookupHeaders, this.reqStaticCaps, this.reqVCaps);
+    return await this.genericRequest('POST', '/v2/lookuprequest/json', wmReq, parseDevice, parseDevice, CACHE_TYPE_HEADERS)
+}
 
 /**
  * hasStaticCapability - returns true if the given capName exist in this client' static capability set, false otherwise
  * @param capName
  * @returns {boolean}
  */
-WmClient.prototype.hasStaticCapability = function(capName){
+WmClient.prototype.hasStaticCapability = function (capName) {
 
-    return this.staticCaps.indexOf(capName)!==-1;
+    return this.staticCaps.indexOf(capName) !== -1;
 };
 
 /**
@@ -268,12 +298,12 @@ WmClient.prototype.hasStaticCapability = function(capName){
  * @param vcapName
  * @returns {boolean}
  */
-WmClient.prototype.hasVirtualCapability = function(vcapName){
-    return this.virtualCaps.indexOf(vcapName)!==-1;
+WmClient.prototype.hasVirtualCapability = function (vcapName) {
+    return this.virtualCaps.indexOf(vcapName) !== -1;
 };
 
-WmClient.prototype.getCapabilityCount = function(device){
-    if(isUndefined(device) ||  (isUndefined(device.capabilities))){
+WmClient.prototype.getCapabilityCount = function (device) {
+    if (isUndefined(device) || (isUndefined(device.capabilities))) {
         return 0;
     }
     return Object.keys(device.capabilities).length;
@@ -283,11 +313,13 @@ WmClient.prototype.getCapabilityCount = function(device){
  * getAllDeviceMakes returns identity data for all devices in WM server
  * @param cb callback that will be ccalled with the API call result
  */
+/*
 WmClient.prototype.getAllDeviceMakes = function (cb) {
     this.getDeviceMakesMap(function(deviceMakesMap) {
         cb(Object.keys(deviceMakesMap))
     })
 };
+ */
 
 
 /**
@@ -295,6 +327,7 @@ WmClient.prototype.getAllDeviceMakes = function (cb) {
  * @param make
  * @param cb callback called on the API result
  */
+/*
 WmClient.prototype.getAllDevicesForMake = function (make, cb) {
     this.getDeviceMakesMap(function(deviceMakesMap) {
         var ob = deviceMakesMap[make];
@@ -304,7 +337,8 @@ WmClient.prototype.getAllDevicesForMake = function (make, cb) {
         cb(undefined, ob)
     })
 };
-
+*/
+/*
 WmClient.prototype.getDeviceMakesMap = function (cb) {
     var client = this;
     var options = client.getOptions('/v2/alldevices/json', 'GET');
@@ -350,17 +384,19 @@ WmClient.prototype.getDeviceMakesMap = function (cb) {
 
     req.end();
 };
-
+*/
 /**
  * getAllOSes returns of all devices device_os capabilities
  * @param cb
  * @returns []
  */
+/*
 WmClient.prototype.getAllOSes = function (cb) {
     this.getDeviceOsVerMap(function(deviceOsVerMap) {
         return cb(Object.keys(deviceOsVerMap))
     })
 };
+ */
 
 
 /**
@@ -368,6 +404,8 @@ WmClient.prototype.getAllOSes = function (cb) {
  * @param device_os
  * @param {function(Error, {[]string}} cb called when done
  */
+
+/*
 WmClient.prototype.getAllVersionsForOS = function (device_os, cb) {
     this.getDeviceOsVerMap(function(deviceOsVerMap) {
         var ob = deviceOsVerMap[device_os];
@@ -381,7 +419,9 @@ WmClient.prototype.getAllVersionsForOS = function (device_os, cb) {
         return cb(undefined, ob);
     });
 };
+ */
 
+/*
 WmClient.prototype.getDeviceOsVerMap = function (cb) {
     var client = this;
     var options = client.getOptions('/v2/alldeviceosversions/json', 'GET');
@@ -399,8 +439,8 @@ WmClient.prototype.getDeviceOsVerMap = function (cb) {
         });
 
         res.on('end', function () {
-            var data = JSON.parse(body);
-            var deviceOsVerMap = {};
+            let data = JSON.parse(body);
+            let deviceOsVerMap = {};
             for (var i = 0; i < data.length; i++) {
                 var os = data[i].device_os;
                 if (isUndefined(os) || os === null || os === "") {
@@ -421,90 +461,81 @@ WmClient.prototype.getDeviceOsVerMap = function (cb) {
     });
 
     req.end();
-};
+};*/
 
-WmClient.prototype.genericRequest = function (options, reqData, parseCb, resultCb, cacheType, client) {
+WmClient.prototype.genericRequest = async function (method, path, reqData, parseCb, resultCb, cacheType) {
 
-    var device = undefined;
+    let device = null;
+    let cacheKey = null
     // If the caller function uses a cache, try a cache lookup
-    if(!isUndefined(cacheType)) {
-        var cacheKey = this.getUserAgentCacheKey(reqData.lookup_headers);
-        if (cacheType === 'ua-cache' && !isUndefined(this.uaCache)) {
+    if (!isUndefined(cacheType)) {
+        let cacheKey = this.getUserAgentCacheKey(reqData.lookup_headers);
+        if (cacheType === CACHE_TYPE_HEADERS && !isUndefined(this.uaCache)) {
             device = this.uaCache.get(cacheKey);
-        } else if (cacheType === 'dId-cache' && !isUndefined(this.devIdCache)) {
+        } else if (cacheType === CACHE_TYPE_DEVICE_ID && !isUndefined(this.devIdCache)) {
             cacheKey = reqData.wurfl_id;
             device = this.devIdCache.get(reqData.wurfl_id);
         }
 
         // cache has found a matching device, pass it to callback
-        if (!isUndefined(device)) {
+        if (device != null && !isUndefined(device)) {
             return resultCb(device);
         }
     }
+    let result
+    if (method === 'GET') {
 
-    // No device found in cache, let's try a server lookup
-    var reqBody = '';
-    if(!isUndefined(reqData)){
-        reqBody = JSON.stringify(reqData);
+        return new Promise(resolve => {
+            let getResponsePromise = getJSON(this.createFullUrl(path))
+            getResponsePromise.then(response => {
+                result = parseCb(response)
+                this.addToCache(cacheType, cacheKey, result)
+                resolve(result)
+            })
+        })
+
+    } else if (method === 'POST') {
+        return new Promise(resolve => {
+            let server_address = this.scheme + '//' + this.host + ':' + this.port
+            let post = bent(server_address, 'POST', 'json', 200)
+            let postResponsePromise = post(path, reqData)
+            postResponsePromise.then(response => {
+                result = parseCb(response)
+                this.addToCache(cacheType, cacheKey, result)
+                resolve(result)
+            })
+        })
     }
-
-    var req = http.request(options, function (res) {
-        var body = '';
-
-        res.on('data', function (chunk) {
-            body += chunk;
-        });
-
-        res.on('end', function () {
-            var result = parseCb(body);
-            if(!isUndefined(result.error) && result.error.length > 0){
-                return resultCb(undefined, new Error('WM server error :' + result.error));
-            }
-
-            if(!isUndefined(client)) {
-                client.addToCache(cacheType, cacheKey, result);
-            }
-            return resultCb(result);
-        });
-
-    });
-    req.on('error', function (e) {
-        return resultCb(undefined,e);
-    });
-
-    if(reqBody.length > 0){
-        req.write(reqBody);
-    }
-
-    req.end();
-};
+}
 
 /**
  * getApiVersion, returns the API version
  * @returns {string}
  */
-WmClient.prototype.getApiVersion = function () { return "2.1.0"; };
+WmClient.prototype.getApiVersion = () => {
+    return '2.2.0'
+}
 
 WmClient.prototype.clearCaches = function () {
     if (!isUndefined(this.uaCache)) {
         this.uaCache.reset();
     }
 
-    if (!isUndefined(this.devIdCache)){
-            this.devIdCache.reset();
+    if (!isUndefined(this.devIdCache)) {
+        this.devIdCache.reset();
     }
 
     this.deviceMakesMap = {};
     this.deviceOsVerMap = {};
 };
 
-WmClient.prototype.safePut = function(cacheType, ckey, cvalue){
-    if(cacheType == 'ua-cache' && !isUndefined(this.uaCache)) {
+WmClient.prototype.safePut = function (cacheType, ckey, cvalue) {
+    if (cacheType == CACHE_TYPE_HEADERS && !isUndefined(this.uaCache)) {
         this.uaCache.set(ckey, cvalue);
         return;
     }
 
-    if(cacheType == 'dId-cache' && !isUndefined(this.devIdCache)) {
+    if (cacheType === CACHE_TYPE_DEVICE_ID && !isUndefined(this.devIdCache)) {
         this.devIdCache.set(ckey, cvalue);
 
     }
@@ -515,32 +546,30 @@ WmClient.prototype.safePut = function(cacheType, ckey, cvalue){
  * @param uaMaxEntries
  */
 WmClient.prototype.setCacheSize = function (uaMaxEntries) {
-            this.uaCache = LRU(uaMaxEntries);
-            this.devIdCache = LRU(20000); // Device ID uses a fixed size
+    this.uaCache = LRU(uaMaxEntries);
+    this.devIdCache = LRU(20000); // Device ID uses a fixed size
 };
 
-function parseInfo(body) {
-    var data = JSON.parse(body);
-    var static_caps = data.static_caps === null ? [] : data.static_caps;
-    var virtual_caps = data.virtual_caps === null ? [] : data.virtual_caps;
-    var info = new model.JSONInfoData(
+function parseInfo(data) {
+    let static_caps = data.static_caps === null ? [] : data.static_caps
+    let virtual_caps = data.virtual_caps === null ? [] : data.virtual_caps
+    let info = new model.JSONInfoData(
         data.wurfl_api_version,
         data.wurfl_info,
         data.wm_version,
         data.important_headers,
         static_caps,
         virtual_caps,
-        data.ltime);
-        if (!checkData(info)){
-            throw Error("server returned invalid or empty data")
-        }
+        data.ltime)
+    if (!checkData(info)) {
+        throw Error("server returned invalid or empty data")
+    }
     return info;
 }
 
-function parseDevice(body) {
+function parseDevice(data) {
 
-    var data = JSON.parse(body);
-    var device = new model.JSONDeviceData(
+    let device = new model.JSONDeviceData(
         data.apiVersion,
         data.capabilities,
         data.error,
@@ -549,9 +578,9 @@ function parseDevice(body) {
     return device;
 }
 
-function endsWith(text, needle){
+function endsWith(text, needle) {
 
-        return text.indexOf(needle, text.length - needle.length) !== -1;
+    return text.indexOf(needle, text.length - needle.length) !== -1;
 }
 
 function isUndefined(value) {
@@ -559,33 +588,32 @@ function isUndefined(value) {
 }
 
 WmClient.prototype.getUserAgentCacheKey = function (headers) {
-    var cacheKey = '';
-    var hname = ''
-    for (let i = 0; i <this.importantHeaders.length; i++){
-        hname = this.importantHeaders[i]
-        var hval = headers[hname];
-        if(!isUndefined(hval)){
-            cacheKey += hval;
+    let cacheKey = ''
+    let h_name = ''
+    for (let i = 0; i < this.importantHeaders.length; i++) {
+        h_name = this.importantHeaders[i]
+        let h_val = headers[h_name]
+        if (!isUndefined(h_val)) {
+            cacheKey += h_val
         }
     }
-    return cacheKey;
-};
+    return cacheKey
+}
 
 WmClient.prototype.clearCachesIfNeeded = function (ltime) {
     if (!isUndefined(ltime) && ltime !== this.ltime) {
-        this.clearCaches();
-        this.ltime = ltime;
+        this.clearCaches()
+        this.ltime = ltime
     }
-};
+}
 
-WmClient.prototype.addToCache = function(cacheType, cacheKey, result) {
+WmClient.prototype.addToCache = function (cacheType, cacheKey, result) {
     // Clear cache if last load time of wurfl.xml on server has changed
-    this.clearCachesIfNeeded(result.ltime);
-    if(cacheType === 'ua-cache'){
-        this.safePut(cacheType, cacheKey, result);
-    }
-    else if (cacheType === 'dId-cache'){
-        this.safePut(cacheType, result.capabilities['wurfl_id'], result);
+    this.clearCachesIfNeeded(result.ltime)
+    if (cacheType === CACHE_TYPE_HEADERS) {
+        this.safePut(cacheType, cacheKey, result)
+    } else if (cacheType === CACHE_TYPE_DEVICE_ID) {
+        this.safePut(cacheType, result.capabilities['wurfl_id'], result)
     }
 }
 
@@ -594,10 +622,10 @@ WmClient.prototype.addToCache = function(cacheType, cacheKey, result) {
  * This function should be called before performing any connection to WM server
  * @param timeout
  */
-WmClient.prototype.setHTTPTimeout = function (timeout) {
-    if(!isUndefined(timeout) && timeout >= 10000) {
-        this.httpTimeout = timeout;
+WmClient.prototype.setHTTPTimeout = (timeout) => {
+    if (!isUndefined(timeout) && timeout >= 10000) {
+        this.httpTimeout = timeout
     }
-};
+}
 
 module.exports.create = create;
