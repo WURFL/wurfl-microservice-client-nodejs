@@ -332,17 +332,13 @@ WmClient.prototype.getDeviceMakesMap = async function () {
 
 /**
  * getAllOSes returns of all devices device_os capabilities
- * @param cb
  * @returns []
  */
-/*
-WmClient.prototype.getAllOSes = function (cb) {
-    this.getDeviceOsVerMap(function(deviceOsVerMap) {
-        return cb(Object.keys(deviceOsVerMap))
-    })
-};
- */
 
+WmClient.prototype.getAllOSes = async function() {
+    let devOsVerMap = await this.getDeviceOsVerMap()
+    return Object.keys(devOsVerMap)
+}
 
 /**
  * getAllVersionsForOS Returns an array of all devices device_os_version for a given device_os cap.
@@ -350,63 +346,49 @@ WmClient.prototype.getAllOSes = function (cb) {
  * @param {function(Error, {[]string}} cb called when done
  */
 
-/*
-WmClient.prototype.getAllVersionsForOS = function (device_os, cb) {
-    this.getDeviceOsVerMap(function(deviceOsVerMap) {
-        var ob = deviceOsVerMap[device_os];
-        if (isUndefined(ob)) {
-            return cb(new Error('WM server error : ' + device_os + ' does not exist'));
-        }
-        // Filter function strips all empty elements
-        ob = ob.filter(function(element) {
-            return element !== "";
-        });
-        return cb(undefined, ob);
-    });
-};
- */
 
-/*
-WmClient.prototype.getDeviceOsVerMap = function (cb) {
-    var client = this;
-    var options = client.getOptions('/v2/alldeviceosversions/json', 'GET');
+WmClient.prototype.getAllVersionsForOS = async function (device_os) {
+    let devOsVerMap = await this.getDeviceOsVerMap()
 
+    let ob = devOsVerMap[device_os]
+    if (isUndefined(ob)) {
+        throw new Error('WM server error : ' + device_os + ' does not exist')
+    }
+    // Filter function strips all empty elements
+    ob = ob.filter(function (element) {
+        return element !== '';
+    })
+    return ob
+}
+
+
+
+WmClient.prototype.getDeviceOsVerMap = async function () {
+
+    let client = this;
     // Check if we have a value for deviceMakesMap
     if (!isUndefined(client.deviceOsVerMap) && client.deviceOsVerMap.length > 0) {
         // This returns a deep copy of make model, so that any changes to it are not reflected into our cached value
-        return cb(JSON.parse(JSON.stringify(client.deviceOsVerMap)))
+        return JSON.parse(JSON.stringify(client.deviceOsVerMap))
     }
 
-    var req = http.request(options, function (res) {
-        var body = '';
-        res.on('data', function (chunk) {
-            body += chunk;
-        });
+    let fullUrl = client.createFullUrl('/v2/alldeviceosversions/json')
+    const allDevices = await getJSON(fullUrl)
+    let deviceOsVerMap = {};
+    for (let i = 0; i < allDevices.length; i++) {
+        let os = allDevices[i].device_os;
+        if (isUndefined(os) || os === null || os === "") {
+            continue;
+        }
+        if (isUndefined(deviceOsVerMap[os])) {
+            deviceOsVerMap[os] = [];
+        }
+        deviceOsVerMap[os].push(allDevices[i].device_os_version);
+    }
 
-        res.on('end', function () {
-            let data = JSON.parse(body);
-            let deviceOsVerMap = {};
-            for (var i = 0; i < data.length; i++) {
-                var os = data[i].device_os;
-                if (isUndefined(os) || os === null || os === "") {
-                    continue;
-                }
-                if (isUndefined(deviceOsVerMap[os])) {
-                    deviceOsVerMap[os] = [];
-                }
-                deviceOsVerMap[os].push(data[i].device_os_version);
-            }
-
-            client.deviceOsVerMap = JSON.parse(JSON.stringify(deviceOsVerMap));
-            return cb(deviceOsVerMap);
-        });
-    });
-    req.on('error', function (e) {
-        return resultCb(e, null)
-    });
-
-    req.end();
-};*/
+    client.deviceOsVerMap = JSON.parse(JSON.stringify(deviceOsVerMap));
+    return deviceOsVerMap
+}
 
 WmClient.prototype.genericRequest = async function (method, path, reqData, parseCb, resultCb, cacheType) {
 

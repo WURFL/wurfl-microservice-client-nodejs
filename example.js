@@ -17,6 +17,8 @@
 // this must be used when executing directly from source code downloaded from git repo
 let wmclient = require('./src/app/wmclient');
 const http = require("http");
+const TEXT_SEPARATOR = '---------------------------------------------------------------------------------'
+separate = function () {console.log(TEXT_SEPARATOR)}
 
 // Example of using the WURFL Microservice Client
 const example = async () => {
@@ -32,7 +34,7 @@ const example = async () => {
     console.log('wm created, printing some data');
     console.log('Static capabilities loaded: ' + client.staticCaps.length);
     console.log('Virtual capabilities loaded: ' + client.virtualCaps.length + '\n');
-
+    separate()
     try {
         let info = await client.getInfo()
         console.log('Server info: \n')
@@ -42,7 +44,7 @@ const example = async () => {
     } catch (error) {
         console.log("Unable to load WURFL Info")
     }
-
+    separate()
     // Perform a detection using passing a whole HTTP request to WM server API
     // When building a request object for node, headers must be lowercase, according to Node standard
     let req_headers = {
@@ -92,19 +94,17 @@ const example = async () => {
             console.log(key + ': ' + device.capabilities[key]);
         }
     }
-
+    separate()
     // Get all the device manufacturers, and print the first twenty
-    let device_makes_promise = client.getAllDeviceMakes();
-    device_makes_promise.then((deviceMakes) => {
-        let limit = 20;
-        console.log("Print the first " + limit + " Brand of " + deviceMakes.length);
-        // Sort the device manufacturer names
-        deviceMakes.sort();
-        for (let i = 0; i < limit; i++) {
-            console.log(" - " + deviceMakes[i]);
-        }
-    })
-
+    let deviceMakes = await client.getAllDeviceMakes()
+    let limit = 20;
+    console.log("Print the first " + limit + " Brand of " + deviceMakes.length)
+    // Sort the device manufacturer names
+    deviceMakes.sort();
+    for (let i = 0; i < limit; i++) {
+        console.log(" - " + deviceMakes[i]);
+    }
+    separate()
     // Now call the WM server to get all device model and marketing names produced by Apple
     let brandName = "Apple"
     try {
@@ -121,6 +121,31 @@ const example = async () => {
         }
     } catch (error) {
         console.log(`Error looking for  models for device, brand ${error.message}`)
+    }
+    separate()
+    // Now call the WM server to get all operative system names
+    let oses = await client.getAllOSes()
+    // Sort and print all OS names
+    console.log("Print the list of OSes");
+    oses.sort();
+    for (let i = 0; i < oses.length; i++) {
+        console.log(" - " + oses[i]);
+    }
+
+    // Let's call the WM server to get all version of the Android OS
+    let os = 'Android'
+    try {
+        let versions = await client.getAllVersionsForOS(os)
+        // Sort all os version numbers and print them.
+        separate()
+        console.log(`Print all versions for the ${os} OS`);
+        versions.sort();
+        for (var i = 0; i < versions.length; i++) {
+            console.log(" - " + versions[i]);
+        }
+    }
+    catch (error){
+        console.log(`Error listing versions for ${os}  OS: ${error.message}`)
     }
 }
 // Run the example
