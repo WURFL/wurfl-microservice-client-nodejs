@@ -53,28 +53,24 @@ function WmClient(scheme, host, port, baseURI) {
  */
 WmClient.prototype.lookupUserAgent = async (userAgent, resultCallback) => {
 
-
     let lHeaders = {'User-Agent': userAgent};
     let reqData = new model.Request(lHeaders, this.reqStaticCaps, this.reqVCaps);
-    return this.genericRequest('POST', '/v2/lookupuseragent/json', reqData, parseDevice, resultCallback, CACHE_TYPE_HEADERS);
+    return this.genericRequest('POST', '/v2/lookupuseragent/json', reqData, parseDevice, CACHE_TYPE_HEADERS);
 }
 
 
 /**
  * lookupDeviceID - Searches WURFL device data using its wurfl_id value
  * @param wurflId
- * @param cb
  * @returns {JSONDeviceData}
  */
-/*
-WmClient.prototype.lookupDeviceID = function (wurflId, cb) {
-    var options = this.getOptions('/v2/lookupdeviceid/json', 'POST');
 
-    var lHeaders = {};
-    var reqData = new model.Request(lHeaders, this.reqStaticCaps, this.reqVCaps, wurflId);
-    this.genericRequest(options, reqData, parseDevice, cb, CACHE_TYPE_DEVICE_ID, this);
-};
-*/
+WmClient.prototype.lookupDeviceID = function (wurflId) {
+
+    const lHeaders = {};
+    let reqData = new model.Request(lHeaders, this.reqStaticCaps, this.reqVCaps, wurflId);
+    return this.genericRequest('POST', '/v2/lookupdeviceid/json', reqData, parseDevice, CACHE_TYPE_DEVICE_ID);
+}
 
 WmClient.prototype.createPath = function (path) {
 
@@ -145,7 +141,7 @@ checkData = (jsonInfoData) => {
  */
 WmClient.prototype.setRequestedCapabilities = function (caps) {
 
-    if(isUndefined(caps) || caps === null){
+    if (isUndefined(caps) || caps === null) {
         this.reqStaticCaps = null;
         this.reqVCaps = null;
         this.clearCaches();
@@ -155,15 +151,11 @@ WmClient.prototype.setRequestedCapabilities = function (caps) {
     let capNames = [];
     let vcapNames = [];
 
-    for (let i=0; i< caps.length; i++)
-    {
+    for (let i = 0; i < caps.length; i++) {
         let name = caps[i];
-        if (this.hasStaticCapability(name))
-        {
+        if (this.hasStaticCapability(name)) {
             capNames.push(name);
-        }
-        else if (this.hasVirtualCapability(name))
-        {
+        } else if (this.hasVirtualCapability(name)) {
             vcapNames.push(name);
         }
     }
@@ -178,7 +170,7 @@ WmClient.prototype.setRequestedCapabilities = function (caps) {
 
 WmClient.prototype.setRequestedStaticCapabilities = function (stCaps) {
 
-    if(isUndefined(stCaps) || stCaps === null){
+    if (isUndefined(stCaps) || stCaps === null) {
         this.reqStaticCaps = null;
         this.clearCaches();
         return;
@@ -186,11 +178,9 @@ WmClient.prototype.setRequestedStaticCapabilities = function (stCaps) {
 
     let capNames = [];
 
-    for (let i=0; i< stCaps.length; i++)
-    {
+    for (let i = 0; i < stCaps.length; i++) {
         let name = stCaps[i];
-        if (this.hasStaticCapability(name))
-        {
+        if (this.hasStaticCapability(name)) {
             capNames.push(name);
         }
     }
@@ -204,19 +194,17 @@ WmClient.prototype.setRequestedStaticCapabilities = function (stCaps) {
 
 WmClient.prototype.setRequestedVirtualCapabilities = function (vCaps) {
 
-    if(isUndefined(vCaps) || vCaps === null){
+    if (isUndefined(vCaps) || vCaps === null) {
         this.reqVCaps = null;
         this.clearCaches();
         return;
     }
 
-    var vcapNames = [];
+    let vcapNames = [];
 
-    for (let i=0; i< vCaps.length; i++)
-    {
+    for (let i = 0; i < vCaps.length; i++) {
         let name = vCaps[i];
-        if (this.hasVirtualCapability(name))
-        {
+        if (this.hasVirtualCapability(name)) {
             vcapNames.push(name);
         }
     }
@@ -226,10 +214,9 @@ WmClient.prototype.setRequestedVirtualCapabilities = function (vCaps) {
 /**
  * lookupRequest - detects a device and returns its data in JSON format
  * @param nodeReq
- * @param cb callback function that will be executed with the resulting JSONDeviceData structure
  * @returns {JSONDeviceData}
  */
-WmClient.prototype.lookupRequest = async function(nodeReq)  {
+WmClient.prototype.lookupRequest = async function (nodeReq) {
     // copy headers
     let lookupHeaders = {};
     for (let i = 0; i < this.importantHeaders.length; i++) {
@@ -270,7 +257,6 @@ WmClient.prototype.getCapabilityCount = function (device) {
 
 /**
  * getAllDeviceMakes returns identity data for all devices in WM server
- * @param cb callback that will be ccalled with the API call result
  */
 
 WmClient.prototype.getAllDeviceMakes = function () {
@@ -285,20 +271,18 @@ WmClient.prototype.getAllDeviceMakes = function () {
 }
 
 
-
 /**
  * getAllDevicesForMake Returns an array of an aggregate containing model_names + marketing_names for the given Make.
  * @param make
  */
-
 WmClient.prototype.getAllDevicesForMake = async function (make) {
-        let client = this
-        let deviceMakesMap = await client.getDeviceMakesMap()
-        let ob = deviceMakesMap[make]
-        if (isUndefined(ob)) {
-            throw new Error('WM server error : ' + make + ' does not exist')
-        }
-        return ob
+    let client = this
+    let deviceMakesMap = await client.getDeviceMakesMap()
+    let ob = deviceMakesMap[make]
+    if (isUndefined(ob)) {
+        throw new Error('WM server error : ' + make + ' does not exist')
+    }
+    return ob
 }
 
 WmClient.prototype.getDeviceMakesMap = async function () {
@@ -313,21 +297,21 @@ WmClient.prototype.getDeviceMakesMap = async function () {
     let fullUrl = client.createFullUrl('/v2/alldevices/json')
     let allDevices = await getJSON(fullUrl)
 
-            let deviceMakesMap = {}
-            for (let i = 0; i < allDevices.length; i++) {
-                let bn = allDevices[i].brand_name;
-                if (isUndefined(bn) || bn === null || bn === "") {
-                    continue;
-                }
+    let deviceMakesMap = {}
+    for (let i = 0; i < allDevices.length; i++) {
+        let bn = allDevices[i].brand_name;
+        if (isUndefined(bn) || bn === null || bn === "") {
+            continue;
+        }
 
-                let modelMktName = new model.JSONModelMktName(allDevices[i].model_name, allDevices[i].marketing_name)
-                if (isUndefined(deviceMakesMap[allDevices[i].brand_name])) {
-                    deviceMakesMap[allDevices[i].brand_name] = [];
-                }
-                deviceMakesMap[allDevices[i].brand_name].push(modelMktName);
-            }
-            client.deviceMakesMap = JSON.parse(JSON.stringify(deviceMakesMap));
-            return deviceMakesMap
+        let modelMktName = new model.JSONModelMktName(allDevices[i].model_name, allDevices[i].marketing_name)
+        if (isUndefined(deviceMakesMap[allDevices[i].brand_name])) {
+            deviceMakesMap[allDevices[i].brand_name] = [];
+        }
+        deviceMakesMap[allDevices[i].brand_name].push(modelMktName);
+    }
+    client.deviceMakesMap = JSON.parse(JSON.stringify(deviceMakesMap));
+    return deviceMakesMap
 }
 
 /**
@@ -335,7 +319,7 @@ WmClient.prototype.getDeviceMakesMap = async function () {
  * @returns []
  */
 
-WmClient.prototype.getAllOSes = async function() {
+WmClient.prototype.getAllOSes = async function () {
     let devOsVerMap = await this.getDeviceOsVerMap()
     return Object.keys(devOsVerMap)
 }
@@ -343,7 +327,6 @@ WmClient.prototype.getAllOSes = async function() {
 /**
  * getAllVersionsForOS Returns an array of all devices device_os_version for a given device_os cap.
  * @param device_os
- * @param {function(Error, {[]string}} cb called when done
  */
 
 
@@ -360,7 +343,6 @@ WmClient.prototype.getAllVersionsForOS = async function (device_os) {
     })
     return ob
 }
-
 
 
 WmClient.prototype.getDeviceOsVerMap = async function () {
@@ -453,7 +435,6 @@ WmClient.prototype.safePut = function (cacheType, ckey, cvalue) {
 
     if (cacheType === CACHE_TYPE_DEVICE_ID && !isUndefined(this.devIdCache)) {
         this.devIdCache.set(ckey, cvalue);
-
     }
 };
 
@@ -494,7 +475,6 @@ function parseDevice(data) {
 }
 
 function endsWith(text, needle) {
-
     return text.indexOf(needle, text.length - needle.length) !== -1;
 }
 
