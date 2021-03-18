@@ -72,25 +72,26 @@ const example = async () => {
     let req = http.request(options);
     req.headers = req_headers
     req.end();
-
-    let device_promise = client.lookupRequest(req)
-    device_promise.then((device) => {
-        console.log('WURFL device id ' + device.capabilities['wurfl_id'] + '\n');
-        console.log('DEVICE BRAND & MODEL');
-        console.log(device.capabilities['brand_name'] + ' ' + device.capabilities['model_name'] + '\n');
-        if (device.capabilities['is_smartphone'] === 'true') {
-            console.log('This is a smartphone\n')
-        }
-
-        console.log('All received capabilities: \n')
-        for (let key in device.capabilities) {
-            if (device.capabilities.hasOwnProperty(key)) {
-                console.log(key + ': ' + device.capabilities[key]);
-            }
-        }
-    }).catch((error) => {
+    let device
+    try {
+        device = await client.lookupRequest(req)
+    }
+    catch(error) {
         console.log('Error detecting device from given headers:  ' + error.message)
-    })
+    }
+    console.log('WURFL device id ' + device.capabilities['wurfl_id'] + '\n');
+    console.log('DEVICE BRAND & MODEL');
+    console.log(device.capabilities['brand_name'] + ' ' + device.capabilities['model_name'] + '\n');
+    if (device.capabilities['is_smartphone'] === 'true') {
+        console.log('This is a smartphone\n')
+    }
+
+    console.log('All received capabilities: \n')
+    for (let key in device.capabilities) {
+        if (device.capabilities.hasOwnProperty(key)) {
+            console.log(key + ': ' + device.capabilities[key]);
+        }
+    }
 
     // Get all the device manufacturers, and print the first twenty
     let device_makes_promise = client.getAllDeviceMakes();
@@ -106,21 +107,21 @@ const example = async () => {
 
     // Now call the WM server to get all device model and marketing names produced by Apple
     let brandName = "Apple"
-    let devsForMakePromise = client.getAllDevicesForMake(brandName)
-    devsForMakePromise.then((modelMktNames) => {
+    try {
+        let devsForMake = await client.getAllDevicesForMake(brandName)
         // Sort modelMktNames by their model name
-        modelMktNames.sort(compare);
+        devsForMake.sort(compare);
         console.log("Print all Model for the Apple Brand");
-        for (let i = 0; i < modelMktNames.length; i++) {
-            let n = " - " + modelMktNames[i].modelName
-            if (modelMktNames[i].marketingName !== undefined) {
-                n += modelMktNames[i].marketingName
+        for (let i = 0; i < devsForMake.length; i++) {
+            let n = " - " + devsForMake[i].modelName
+            if (devsForMake[i].marketingName !== undefined) {
+                n += devsForMake[i].marketingName
             }
             console.log(n);
         }
-    }).catch((error) => {
+    } catch (error) {
         console.log(`Error looking for  models for device, brand ${error.message}`)
-    })
+    }
 }
 // Run the example
 example().then().catch()

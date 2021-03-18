@@ -106,7 +106,6 @@ WmClient.prototype.getInfo = async function () {
  * @param host
  * @param port
  * @param baseURI
- * @param cb
  */
 async function create(scheme, host, port, baseURI) {
     let sc = scheme
@@ -241,7 +240,7 @@ WmClient.prototype.lookupRequest = async function(nodeReq)  {
         }
     }
     let wmReq = new model.Request(lookupHeaders, this.reqStaticCaps, this.reqVCaps);
-    return await this.genericRequest('POST', '/v2/lookuprequest/json', wmReq, parseDevice, parseDevice, CACHE_TYPE_HEADERS)
+    return await this.genericRequest('POST', '/v2/lookuprequest/json', wmReq, parseDevice, CACHE_TYPE_HEADERS)
 }
 
 /**
@@ -250,7 +249,6 @@ WmClient.prototype.lookupRequest = async function(nodeReq)  {
  * @returns {boolean}
  */
 WmClient.prototype.hasStaticCapability = function (capName) {
-
     return this.staticCaps.indexOf(capName) !== -1;
 };
 
@@ -293,52 +291,43 @@ WmClient.prototype.getAllDeviceMakes = function () {
  * @param make
  */
 
-WmClient.prototype.getAllDevicesForMake = function (make) {
-    let client = this
-    return new Promise(((resolve, reject) => {
-        let deviceMakesMapPromise = client.getDeviceMakesMap()
-        deviceMakesMapPromise.then((deviceMakesMap) => {
-            let ob = deviceMakesMap[make]
-            if (isUndefined(ob)) {
-                reject(new Error('WM server error : ' + make + ' does not exist'))
-            }
-            resolve(ob)
-        })
-    }))
+WmClient.prototype.getAllDevicesForMake = async function (make) {
+        let client = this
+        let deviceMakesMap = await client.getDeviceMakesMap()
+        let ob = deviceMakesMap[make]
+        if (isUndefined(ob)) {
+            throw new Error('WM server error : ' + make + ' does not exist')
+        }
+        return ob
 }
 
-
-WmClient.prototype.getDeviceMakesMap = function (cb) {
+WmClient.prototype.getDeviceMakesMap = async function () {
     let client = this;
 
     // Check if we have a value for deviceMakesMap
     if (!isUndefined(client.deviceMakesMap) && client.deviceMakesMap.length > 0) {
         // This returns a deep copy of make model, so that any changes to it are not reflected into our cached value
-        let map_copy = cb(JSON.parse(JSON.stringify(client.deviceMakesMap)))
-        return Promise.resolve(map_copy)
+        return JSON.parse(JSON.stringify(client.deviceMakesMap))
     }
 
-    return new Promise((resolve) => {
-        let fullUrl = client.createFullUrl('/v2/alldevices/json')
-        let allDevicesPromise = getJSON(fullUrl)
-        allDevicesPromise.then(devices => {
+    let fullUrl = client.createFullUrl('/v2/alldevices/json')
+    let allDevices = await getJSON(fullUrl)
+
             let deviceMakesMap = {}
-            for (let i = 0; i < devices.length; i++) {
-                let bn = devices[i].brand_name;
+            for (let i = 0; i < allDevices.length; i++) {
+                let bn = allDevices[i].brand_name;
                 if (isUndefined(bn) || bn === null || bn === "") {
                     continue;
                 }
 
-                let modelMktName = new model.JSONModelMktName(devices[i].model_name, devices[i].marketing_name)
-                if (isUndefined(deviceMakesMap[devices[i].brand_name])) {
-                    deviceMakesMap[devices[i].brand_name] = [];
+                let modelMktName = new model.JSONModelMktName(allDevices[i].model_name, allDevices[i].marketing_name)
+                if (isUndefined(deviceMakesMap[allDevices[i].brand_name])) {
+                    deviceMakesMap[allDevices[i].brand_name] = [];
                 }
-                deviceMakesMap[devices[i].brand_name].push(modelMktName);
+                deviceMakesMap[allDevices[i].brand_name].push(modelMktName);
             }
             client.deviceMakesMap = JSON.parse(JSON.stringify(deviceMakesMap));
-            resolve(deviceMakesMap)
-        })
-    })
+            return deviceMakesMap
 }
 
 /**
@@ -440,28 +429,17 @@ WmClient.prototype.genericRequest = async function (method, path, reqData, parse
     }
     let result
     if (method === 'GET') {
-
-        return new Promise(resolve => {
-            let getResponsePromise = getJSON(this.createFullUrl(path))
-            getResponsePromise.then(response => {
-                result = parseCb(response)
-                this.addToCache(cacheType, cacheKey, result)
-                resolve(result)
-            })
-        })
-
+        let getResponse = await getJSON(this.createFullUrl(path))
+        result = parseCb(getResponse)
+        this.addToCache(cacheType, cacheKey, result)
     } else if (method === 'POST') {
-        return new Promise(resolve => {
-            let server_address = this.scheme + '//' + this.host + ':' + this.port
-            let post = bent(server_address, 'POST', 'json', 200)
-            let postResponsePromise = post(path, reqData)
-            postResponsePromise.then(response => {
-                result = parseCb(response)
-                this.addToCache(cacheType, cacheKey, result)
-                resolve(result)
-            })
-        })
+        let server_address = this.scheme + '//' + this.host + ':' + this.port
+        let post = bent(server_address, 'POST', 'json', 200)
+        let postResponse = await post(path, reqData)
+        result = parseCb(postResponse)
+        this.addToCache(cacheType, cacheKey, result)
     }
+    return result
 }
 
 /**
@@ -486,7 +464,7 @@ WmClient.prototype.clearCaches = function () {
 };
 
 WmClient.prototype.safePut = function (cacheType, ckey, cvalue) {
-    if (cacheType == CACHE_TYPE_HEADERS && !isUndefined(this.uaCache)) {
+    if (cacheType === CACHE_TYPE_HEADERS && !isUndefined(this.uaCache)) {
         this.uaCache.set(ckey, cvalue);
         return;
     }
@@ -525,13 +503,12 @@ function parseInfo(data) {
 
 function parseDevice(data) {
 
-    let device = new model.JSONDeviceData(
+    return new model.JSONDeviceData(
         data.apiVersion,
         data.capabilities,
         data.error,
         data.mtime,
         data.ltime);
-    return device;
 }
 
 function endsWith(text, needle) {
