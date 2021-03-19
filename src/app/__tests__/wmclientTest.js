@@ -147,4 +147,50 @@ describe( "Wm client", () => {
         expect(device).toBeUndefined()
         expect(exc).toBeTruthy()
         })
+    test('getCapabilityCount should return the number of capabilities loaded in device', async () => {
+
+        let device = await client.lookupDeviceID('nokia_generic_series40')
+        expect(device).toBeDefined()
+        let capCount = client.getCapabilityCount(device)
+        expect(capCount).toBeGreaterThan(0)
+    })
+    test('getCapabilityCount should return zero when device is undefined', () => {
+        expect(client.getCapabilityCount(undefined)).toBe(0)
+    })
+    test('getCapabilityCount should return zero when device capabilities property is undefined', () => {
+        let device = {'property': 'test'};
+        expect(client.getCapabilityCount(device)).toBe(0)
+    })
+    test('lookupUserAgent should return device data with all the available capabilities', async () =>{
+
+        let device = await client.lookupUserAgent('Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36')
+        expect(device).toBeDefined()
+        expect(device.capabilities['brand_name']).toBe('Asus')
+        expect(device.capabilities['is_robot']).toBe('false')
+        expect(device.capabilities['model_name']).toBe('Z017D')
+        expect(device.capabilities['wurfl_id']).toBe('asus_z017d_ver1')
+        expect(client.getCapabilityCount(device)).toBeGreaterThan(0)
+        expect(device.ltime).toBeDefined()
+        expect(device.mtime).toBeGreaterThan(0)
+        })
+    test('lookupUserAgent should return device data with the set of chosen capabilities', async () => {
+
+        client.setRequestedStaticCapabilities(['brand_name', 'model_name'])
+        client.setRequestedVirtualCapabilities(['is_robot', 'form_factor'])
+        let device = await client.lookupUserAgent('Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36')
+        expect(device.capabilities['brand_name']).toBe('Asus')
+        expect(device.capabilities['is_robot']).toBe('false')
+        expect(device.capabilities['model_name']).toBe('Z017D')
+        expect(device.capabilities['model_name']).toBe('Z017D')
+        expect(device.capabilities['form_factor']).toBe('Smartphone')
+        expect(client.getCapabilityCount(device)).toBe(5)
+
+        // These caps have not been defined
+        expect(device.capabilities['resolution_width']).toBeUndefined()
+        expect(device.capabilities['is_app_webview']).toBeUndefined()
+        expect(device.mtime).toBeGreaterThan(0)
+        expect(device.APIVersion).toBeDefined()
+        client.setRequestedStaticCapabilities([]);
+        client.setRequestedVirtualCapabilities([]);
+        })
 })

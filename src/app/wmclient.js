@@ -51,7 +51,7 @@ function WmClient(scheme, host, port, baseURI) {
  * @param resultCallback
  * @returns {JSONDeviceData}
  */
-WmClient.prototype.lookupUserAgent = async (userAgent, resultCallback) => {
+WmClient.prototype.lookupUserAgent = async function (userAgent) {
 
     let lHeaders = {'User-Agent': userAgent};
     let reqData = new model.Request(lHeaders, this.reqStaticCaps, this.reqVCaps);
