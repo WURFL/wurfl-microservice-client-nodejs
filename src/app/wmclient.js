@@ -65,11 +65,15 @@ WmClient.prototype.lookupUserAgent = async (userAgent, resultCallback) => {
  * @returns {JSONDeviceData}
  */
 
-WmClient.prototype.lookupDeviceID = function (wurflId) {
+WmClient.prototype.lookupDeviceID = async function (wurflId) {
 
     const lHeaders = {};
     let reqData = new model.Request(lHeaders, this.reqStaticCaps, this.reqVCaps, wurflId);
-    return this.genericRequest('POST', '/v2/lookupdeviceid/json', reqData, parseDevice, CACHE_TYPE_DEVICE_ID);
+    let device = await this.genericRequest('POST', '/v2/lookupdeviceid/json', reqData, parseDevice, CACHE_TYPE_DEVICE_ID);
+    if (!isUndefinedOrNull(device.error) && device.error.length > 0){
+        throw new Error(device.error)
+    }
+    return device
 }
 
 WmClient.prototype.createPath = function (path) {
@@ -141,7 +145,7 @@ checkData = (jsonInfoData) => {
  */
 WmClient.prototype.setRequestedCapabilities = function (caps) {
 
-    if (isUndefined(caps) || caps === null) {
+    if (isUndefinedOrNull(caps) || caps === null) {
         this.reqStaticCaps = null;
         this.reqVCaps = null;
         this.clearCaches();
@@ -170,7 +174,7 @@ WmClient.prototype.setRequestedCapabilities = function (caps) {
 
 WmClient.prototype.setRequestedStaticCapabilities = function (stCaps) {
 
-    if (isUndefined(stCaps) || stCaps === null) {
+    if (isUndefinedOrNull(stCaps) || stCaps === null) {
         this.reqStaticCaps = null;
         this.clearCaches();
         return;
@@ -194,7 +198,7 @@ WmClient.prototype.setRequestedStaticCapabilities = function (stCaps) {
 
 WmClient.prototype.setRequestedVirtualCapabilities = function (vCaps) {
 
-    if (isUndefined(vCaps) || vCaps === null) {
+    if (isUndefinedOrNull(vCaps) || vCaps === null) {
         this.reqVCaps = null;
         this.clearCaches();
         return;
@@ -222,7 +226,7 @@ WmClient.prototype.lookupRequest = async function (nodeReq) {
     for (let i = 0; i < this.importantHeaders.length; i++) {
         let name = this.importantHeaders[i];
         let h = nodeReq.headers[name.toLowerCase()];
-        if (!isUndefined(h) && h.length > 0) {
+        if (!isUndefinedOrNull(h) && h.length > 0) {
             lookupHeaders[name] = h;
         }
     }
@@ -249,7 +253,7 @@ WmClient.prototype.hasVirtualCapability = function (vcapName) {
 };
 
 WmClient.prototype.getCapabilityCount = function (device) {
-    if (isUndefined(device) || (isUndefined(device.capabilities))) {
+    if (isUndefinedOrNull(device) || (isUndefinedOrNull(device.capabilities))) {
         return 0;
     }
     return Object.keys(device.capabilities).length;
@@ -279,7 +283,7 @@ WmClient.prototype.getAllDevicesForMake = async function (make) {
     let client = this
     let deviceMakesMap = await client.getDeviceMakesMap()
     let ob = deviceMakesMap[make]
-    if (isUndefined(ob)) {
+    if (isUndefinedOrNull(ob)) {
         throw new Error('WM server error : ' + make + ' does not exist')
     }
     return ob
@@ -289,7 +293,7 @@ WmClient.prototype.getDeviceMakesMap = async function () {
     let client = this;
 
     // Check if we have a value for deviceMakesMap
-    if (!isUndefined(client.deviceMakesMap) && client.deviceMakesMap.length > 0) {
+    if (!isUndefinedOrNull(client.deviceMakesMap) && client.deviceMakesMap.length > 0) {
         // This returns a deep copy of make model, so that any changes to it are not reflected into our cached value
         return JSON.parse(JSON.stringify(client.deviceMakesMap))
     }
@@ -300,12 +304,12 @@ WmClient.prototype.getDeviceMakesMap = async function () {
     let deviceMakesMap = {}
     for (let i = 0; i < allDevices.length; i++) {
         let bn = allDevices[i].brand_name;
-        if (isUndefined(bn) || bn === null || bn === "") {
+        if (isUndefinedOrNull(bn) || bn === null || bn === "") {
             continue;
         }
 
         let modelMktName = new model.JSONModelMktName(allDevices[i].model_name, allDevices[i].marketing_name)
-        if (isUndefined(deviceMakesMap[allDevices[i].brand_name])) {
+        if (isUndefinedOrNull(deviceMakesMap[allDevices[i].brand_name])) {
             deviceMakesMap[allDevices[i].brand_name] = [];
         }
         deviceMakesMap[allDevices[i].brand_name].push(modelMktName);
@@ -334,7 +338,7 @@ WmClient.prototype.getAllVersionsForOS = async function (device_os) {
     let devOsVerMap = await this.getDeviceOsVerMap()
 
     let ob = devOsVerMap[device_os]
-    if (isUndefined(ob)) {
+    if (isUndefinedOrNull(ob)) {
         throw new Error('WM server error : ' + device_os + ' does not exist')
     }
     // Filter function strips all empty elements
@@ -349,7 +353,7 @@ WmClient.prototype.getDeviceOsVerMap = async function () {
 
     let client = this;
     // Check if we have a value for deviceMakesMap
-    if (!isUndefined(client.deviceOsVerMap) && client.deviceOsVerMap.length > 0) {
+    if (!isUndefinedOrNull(client.deviceOsVerMap) && client.deviceOsVerMap.length > 0) {
         // This returns a deep copy of make model, so that any changes to it are not reflected into our cached value
         return JSON.parse(JSON.stringify(client.deviceOsVerMap))
     }
@@ -359,10 +363,10 @@ WmClient.prototype.getDeviceOsVerMap = async function () {
     let deviceOsVerMap = {};
     for (let i = 0; i < allDevices.length; i++) {
         let os = allDevices[i].device_os;
-        if (isUndefined(os) || os === null || os === "") {
+        if (isUndefinedOrNull(os) || os === null || os === "") {
             continue;
         }
-        if (isUndefined(deviceOsVerMap[os])) {
+        if (isUndefinedOrNull(deviceOsVerMap[os])) {
             deviceOsVerMap[os] = [];
         }
         deviceOsVerMap[os].push(allDevices[i].device_os_version);
@@ -377,17 +381,17 @@ WmClient.prototype.genericRequest = async function (method, path, reqData, parse
     let device = null;
     let cacheKey = null
     // If the caller function uses a cache, try a cache lookup
-    if (!isUndefined(cacheType)) {
+    if (!isUndefinedOrNull(cacheType)) {
         let cacheKey = this.getUserAgentCacheKey(reqData.lookup_headers);
-        if (cacheType === CACHE_TYPE_HEADERS && !isUndefined(this.uaCache)) {
+        if (cacheType === CACHE_TYPE_HEADERS && !isUndefinedOrNull(this.uaCache)) {
             device = this.uaCache.get(cacheKey);
-        } else if (cacheType === CACHE_TYPE_DEVICE_ID && !isUndefined(this.devIdCache)) {
+        } else if (cacheType === CACHE_TYPE_DEVICE_ID && !isUndefinedOrNull(this.devIdCache)) {
             cacheKey = reqData.wurfl_id;
             device = this.devIdCache.get(reqData.wurfl_id);
         }
 
         // cache has found a matching device, pass it to callback
-        if (device != null && !isUndefined(device)) {
+        if (device != null && !isUndefinedOrNull(device)) {
             return resultCb(device);
         }
     }
@@ -415,11 +419,11 @@ WmClient.prototype.getApiVersion = () => {
 }
 
 WmClient.prototype.clearCaches = function () {
-    if (!isUndefined(this.uaCache)) {
+    if (!isUndefinedOrNull(this.uaCache)) {
         this.uaCache.reset();
     }
 
-    if (!isUndefined(this.devIdCache)) {
+    if (!isUndefinedOrNull(this.devIdCache)) {
         this.devIdCache.reset();
     }
 
@@ -428,12 +432,12 @@ WmClient.prototype.clearCaches = function () {
 };
 
 WmClient.prototype.safePut = function (cacheType, ckey, cvalue) {
-    if (cacheType === CACHE_TYPE_HEADERS && !isUndefined(this.uaCache)) {
+    if (cacheType === CACHE_TYPE_HEADERS && !isUndefinedOrNull(this.uaCache)) {
         this.uaCache.set(ckey, cvalue);
         return;
     }
 
-    if (cacheType === CACHE_TYPE_DEVICE_ID && !isUndefined(this.devIdCache)) {
+    if (cacheType === CACHE_TYPE_DEVICE_ID && !isUndefinedOrNull(this.devIdCache)) {
         this.devIdCache.set(ckey, cvalue);
     }
 };
@@ -478,8 +482,8 @@ function endsWith(text, needle) {
     return text.indexOf(needle, text.length - needle.length) !== -1;
 }
 
-function isUndefined(value) {
-    return typeof value === "undefined"
+function isUndefinedOrNull(value) {
+    return (typeof value === "undefined" || value == null)
 }
 
 WmClient.prototype.getUserAgentCacheKey = function (headers) {
@@ -488,7 +492,7 @@ WmClient.prototype.getUserAgentCacheKey = function (headers) {
     for (let i = 0; i < this.importantHeaders.length; i++) {
         h_name = this.importantHeaders[i]
         let h_val = headers[h_name]
-        if (!isUndefined(h_val)) {
+        if (!isUndefinedOrNull(h_val)) {
             cacheKey += h_val
         }
     }
@@ -496,7 +500,7 @@ WmClient.prototype.getUserAgentCacheKey = function (headers) {
 }
 
 WmClient.prototype.clearCachesIfNeeded = function (ltime) {
-    if (!isUndefined(ltime) && ltime !== this.ltime) {
+    if (!isUndefinedOrNull(ltime) && ltime !== this.ltime) {
         this.clearCaches()
         this.ltime = ltime
     }
@@ -518,7 +522,7 @@ WmClient.prototype.addToCache = function (cacheType, cacheKey, result) {
  * @param timeout
  */
 WmClient.prototype.setHTTPTimeout = (timeout) => {
-    if (!isUndefined(timeout) && timeout >= 10000) {
+    if (!isUndefinedOrNull(timeout) && timeout >= 10000) {
         this.httpTimeout = timeout
     }
 }

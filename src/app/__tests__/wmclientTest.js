@@ -134,4 +134,17 @@ describe( "Wm client", () => {
         client.setRequestedVirtualCapabilities([])
         expect(device.ltime).toBeDefined()
     })
+    test('lookupDeviceID should throw an error with message if device does not exist in server', async () => {
+        let exc = false
+        let device
+        try {
+            device = await client.lookupDeviceID('google_unexisting_id')
+        }
+        catch (error){
+            exc = true
+        }
+        expect(client.getCapabilityCount(device)).toBe(0)
+        expect(device).toBeUndefined()
+        expect(exc).toBeTruthy()
+        })
 })
