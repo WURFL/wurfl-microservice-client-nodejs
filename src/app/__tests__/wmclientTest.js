@@ -14,10 +14,11 @@
    limitations under the License.
  */
 const wmClient = require('../wmclient')
+const http = require("http");
 
 'use strict'
 let client;
-describe( "Wm client", () => {
+describe("Wm client", () => {
     beforeAll(async () => {
         console.log('Running on node v ' + process.version)
         client = await wmClient.create('http:', 'localhost', '8080', '')
@@ -48,8 +49,7 @@ describe( "Wm client", () => {
         let exc = false
         try {
             await wmClient.create('smtp', 'localhost', '8080', '')
-        }
-        catch (error){
+        } catch (error) {
             exc = true
             expect(error.message).toContain('Unknown protocol')
             expect(error.message).toContain('smtp')
@@ -70,8 +70,7 @@ describe( "Wm client", () => {
         let exc = false
         try {
             await wmClient.create('http:', 'localhost', '8089', '')
-        }
-        catch (error){
+        } catch (error) {
             exc = true
             expect(error.message).toContain('ECONNREFUSED')
         }
@@ -87,15 +86,15 @@ describe( "Wm client", () => {
         expect(client.hasStaticCapability('is_app')).toBeFalsy()
         // This doesn't exist
         expect(client.hasStaticCapability('nonexisting_cap')).toBeFalsy()
-        })
+    })
     test('should return true when a virtual capability is exposed by the WM server, false otherwise', async () => {
-            expect(client.hasVirtualCapability('is_robot')).toBeTruthy()
-            expect(client.hasVirtualCapability('is_smartphone')).toBeTruthy()
-            expect(client.hasVirtualCapability('form_factor')).toBeTruthy()
-            // this is a static capability, so it shouldn't be returned
-            expect(client.hasVirtualCapability('brand_name')).toBeFalsy()
-            expect(client.hasVirtualCapability('nonexisting_vcap')).toBeFalsy()
-        })
+        expect(client.hasVirtualCapability('is_robot')).toBeTruthy()
+        expect(client.hasVirtualCapability('is_smartphone')).toBeTruthy()
+        expect(client.hasVirtualCapability('form_factor')).toBeTruthy()
+        // this is a static capability, so it shouldn't be returned
+        expect(client.hasVirtualCapability('brand_name')).toBeFalsy()
+        expect(client.hasVirtualCapability('nonexisting_vcap')).toBeFalsy()
+    })
     test('getInfo should return WM server info when called', async () => {
 
         let info = await client.getInfo()
@@ -108,16 +107,16 @@ describe( "Wm client", () => {
         // this is something that can be specified later, so now they are undefined
         expect(info.reqStaticCaps).toBeUndefined()
         expect(info.reqVCaps).toBeUndefined()
-        })
-    test('lookupDeviceID should return device data with all the available capabilities', async () =>{
+    })
+    test('lookupDeviceID should return device data with all the available capabilities', async () => {
         let device = await client.lookupDeviceID('nokia_generic_series40')
-            expect(device).toBeDefined()
-            expect(device.capabilities['brand_name']).toBe('Nokia')
-            expect(device.capabilities['is_robot']).toBe('false')
-            expect(device.capabilities['form_factor']).toBe('Feature Phone')
-            expect(client.getCapabilityCount(device)).toBeGreaterThan(0)
-            expect(device.ltime).toBeDefined()
-        })
+        expect(device).toBeDefined()
+        expect(device.capabilities['brand_name']).toBe('Nokia')
+        expect(device.capabilities['is_robot']).toBe('false')
+        expect(device.capabilities['form_factor']).toBe('Feature Phone')
+        expect(client.getCapabilityCount(device)).toBeGreaterThan(0)
+        expect(device.ltime).toBeDefined()
+    })
     test('lookupDeviceID should return device data with the selected capability values', async () => {
 
         client.setRequestedStaticCapabilities(['brand_name', 'model_name'])
@@ -139,14 +138,13 @@ describe( "Wm client", () => {
         let device
         try {
             device = await client.lookupDeviceID('google_unexisting_id')
-        }
-        catch (error){
+        } catch (error) {
             exc = true
         }
         expect(client.getCapabilityCount(device)).toBe(0)
         expect(device).toBeUndefined()
         expect(exc).toBeTruthy()
-        })
+    })
     test('getCapabilityCount should return the number of capabilities loaded in device', async () => {
 
         let device = await client.lookupDeviceID('nokia_generic_series40')
@@ -161,7 +159,7 @@ describe( "Wm client", () => {
         let device = {'property': 'test'};
         expect(client.getCapabilityCount(device)).toBe(0)
     })
-    test('lookupUserAgent should return device data with all the available capabilities', async () =>{
+    test('lookupUserAgent should return device data with all the available capabilities', async () => {
 
         let device = await client.lookupUserAgent('Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36')
         expect(device).toBeDefined()
@@ -172,7 +170,7 @@ describe( "Wm client", () => {
         expect(client.getCapabilityCount(device)).toBeGreaterThan(0)
         expect(device.ltime).toBeDefined()
         expect(device.mtime).toBeGreaterThan(0)
-        })
+    })
     test('lookupUserAgent should return device data with the set of chosen capabilities', async () => {
 
         client.setRequestedStaticCapabilities(['brand_name', 'model_name'])
@@ -192,5 +190,33 @@ describe( "Wm client", () => {
         expect(device.APIVersion).toBeDefined()
         client.setRequestedStaticCapabilities([]);
         client.setRequestedVirtualCapabilities([]);
-        })
+    })
+    test('lookupRequest should return a device with all the available capabilities', async () => {
+
+        // In order to emulate node js behaviour we must lowercase (see: https://nodejs.org/docs/latest-v0.10.x/api/http.html) "Keys are lowercased. Values are not modified"
+        let hs = {
+            'content-Type': 'application/json',
+            'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/539.36',
+            'accept-encoding': 'gzip, deflate'
+        }
+        let options = {
+            protocol: 'http:',
+            host: 'localhost',
+            port: '8080',
+            method: 'POST',
+            path: '/',
+        }
+        let req = http.request(options);
+        req.headers = hs
+        req.end()
+        let device = await client.lookupRequest(req)
+        expect(device).toBeDefined()
+        expect(client.getCapabilityCount(device)).toBeGreaterThan(0)
+        expect(device.capabilities['wurfl_id']).toBe('asus_z017d_ver1')
+        expect(device.capabilities['brand_name']).toBe('Asus')
+        expect(device.capabilities['is_robot']).toBe('false')
+        expect(device.capabilities['is_full_desktop']).toBe('false')
+        expect(device.APIVersion).toBeDefined()
+        expect(device.mtime).toBeGreaterThan(0)
+    })
 })
