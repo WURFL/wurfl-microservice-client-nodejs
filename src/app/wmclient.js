@@ -67,7 +67,7 @@ WmClient.prototype.lookupUserAgent = async function (userAgent) {
 
 WmClient.prototype.lookupDeviceID = async function (wurflId) {
 
-    const lHeaders = {};
+    const lHeaders = {}
     let reqData = new model.Request(lHeaders, this.reqStaticCaps, this.reqVCaps, wurflId);
     let device = await this.genericRequest('POST', '/v2/lookupdeviceid/json', reqData, parseDevice, CACHE_TYPE_DEVICE_ID);
     if (!isUndefinedOrNull(device.error) && device.error.length > 0){
@@ -148,25 +148,25 @@ checkData = (jsonInfoData) => {
 WmClient.prototype.setRequestedCapabilities = function (caps) {
 
     if (isUndefinedOrNull(caps) || caps === null) {
-        this.reqStaticCaps = null;
-        this.reqVCaps = null;
-        this.clearCaches();
+        this.reqStaticCaps = null
+        this.reqVCaps = null
+        this.clearCaches()
         return;
     }
 
-    let capNames = [];
-    let vcapNames = [];
+    let capNames = []
+    let vcapNames = []
 
     for (let i = 0; i < caps.length; i++) {
-        let name = caps[i];
+        let name = caps[i]
         if (this.hasStaticCapability(name)) {
-            capNames.push(name);
+            capNames.push(name)
         } else if (this.hasVirtualCapability(name)) {
-            vcapNames.push(name);
+            vcapNames.push(name)
         }
     }
-    this.reqStaticCaps = capNames;
-    this.reqVCaps = vcapNames;
+    this.reqStaticCaps = capNames
+    this.reqVCaps = vcapNames
 }
 
 /**
@@ -177,20 +177,20 @@ WmClient.prototype.setRequestedCapabilities = function (caps) {
 WmClient.prototype.setRequestedStaticCapabilities = function (stCaps) {
 
     if (isUndefinedOrNull(stCaps) || stCaps === null) {
-        this.reqStaticCaps = null;
-        this.clearCaches();
-        return;
+        this.reqStaticCaps = null
+        this.clearCaches()
+        return
     }
 
     let capNames = [];
 
     for (let i = 0; i < stCaps.length; i++) {
-        let name = stCaps[i];
+        let name = stCaps[i]
         if (this.hasStaticCapability(name)) {
-            capNames.push(name);
+            capNames.push(name)
         }
     }
-    this.reqStaticCaps = capNames;
+    this.reqStaticCaps = capNames
 }
 
 /**
@@ -201,20 +201,20 @@ WmClient.prototype.setRequestedStaticCapabilities = function (stCaps) {
 WmClient.prototype.setRequestedVirtualCapabilities = function (vCaps) {
 
     if (isUndefinedOrNull(vCaps) || vCaps === null) {
-        this.reqVCaps = null;
-        this.clearCaches();
+        this.reqVCaps = null
+        this.clearCaches()
         return;
     }
 
-    let vcapNames = [];
+    let vcapNames = []
 
     for (let i = 0; i < vCaps.length; i++) {
-        let name = vCaps[i];
+        let name = vCaps[i]
         if (this.hasVirtualCapability(name)) {
-            vcapNames.push(name);
+            vcapNames.push(name)
         }
     }
-    this.reqVCaps = vcapNames;
+    this.reqVCaps = vcapNames
 }
 
 /**
@@ -226,10 +226,10 @@ WmClient.prototype.lookupRequest = async function (nodeReq) {
     // copy headers
     let lookupHeaders = {};
     for (let i = 0; i < this.importantHeaders.length; i++) {
-        let name = this.importantHeaders[i];
-        let h = nodeReq.headers[name.toLowerCase()];
+        let name = this.importantHeaders[i]
+        let h = nodeReq.headers[name.toLowerCase()]
         if (!isUndefinedOrNull(h) && h.length > 0) {
-            lookupHeaders[name] = h;
+            lookupHeaders[name] = h
         }
     }
     let wmReq = new model.Request(lookupHeaders, this.reqStaticCaps, this.reqVCaps);
@@ -242,7 +242,7 @@ WmClient.prototype.lookupRequest = async function (nodeReq) {
  * @returns {boolean}
  */
 WmClient.prototype.hasStaticCapability = function (capName) {
-    return this.staticCaps.indexOf(capName) !== -1;
+    return this.staticCaps.indexOf(capName) !== -1
 };
 
 /**
@@ -251,14 +251,14 @@ WmClient.prototype.hasStaticCapability = function (capName) {
  * @returns {boolean}
  */
 WmClient.prototype.hasVirtualCapability = function (vcapName) {
-    return this.virtualCaps.indexOf(vcapName) !== -1;
+    return this.virtualCaps.indexOf(vcapName) !== -1
 };
 
 WmClient.prototype.getCapabilityCount = function (device) {
     if (isUndefinedOrNull(device) || (isUndefinedOrNull(device.capabilities))) {
         return 0;
     }
-    return Object.keys(device.capabilities).length;
+    return Object.keys(device.capabilities).length
 };
 
 /**
@@ -305,7 +305,7 @@ WmClient.prototype.getDeviceMakesMap = async function () {
 
     let deviceMakesMap = {}
     for (let i = 0; i < allDevices.length; i++) {
-        let bn = allDevices[i].brand_name;
+        let bn = allDevices[i].brand_name
         if (isUndefinedOrNull(bn) || bn === null || bn === "") {
             continue;
         }
@@ -314,9 +314,9 @@ WmClient.prototype.getDeviceMakesMap = async function () {
         if (isUndefinedOrNull(deviceMakesMap[allDevices[i].brand_name])) {
             deviceMakesMap[allDevices[i].brand_name] = [];
         }
-        deviceMakesMap[allDevices[i].brand_name].push(modelMktName);
+        deviceMakesMap[allDevices[i].brand_name].push(modelMktName)
     }
-    client.deviceMakesMap = JSON.parse(JSON.stringify(deviceMakesMap));
+    client.deviceMakesMap = JSON.parse(JSON.stringify(deviceMakesMap))
     return deviceMakesMap
 }
 
@@ -345,7 +345,7 @@ WmClient.prototype.getAllVersionsForOS = async function (device_os) {
     }
     // Filter function strips all empty elements
     ob = ob.filter(function (element) {
-        return element !== '';
+        return element !== ''
     })
     return ob
 }
@@ -353,7 +353,7 @@ WmClient.prototype.getAllVersionsForOS = async function (device_os) {
 
 WmClient.prototype.getDeviceOsVerMap = async function () {
 
-    let client = this;
+    let client = this
     // Check if we have a value for deviceMakesMap
     if (!isUndefinedOrNull(client.deviceOsVerMap) && client.deviceOsVerMap.length > 0) {
         // This returns a deep copy of make model, so that any changes to it are not reflected into our cached value
@@ -364,37 +364,37 @@ WmClient.prototype.getDeviceOsVerMap = async function () {
     const allDevices = await getJSON(fullUrl)
     let deviceOsVerMap = {};
     for (let i = 0; i < allDevices.length; i++) {
-        let os = allDevices[i].device_os;
+        let os = allDevices[i].device_os
         if (isUndefinedOrNull(os) || os === null || os === "") {
-            continue;
+            continue
         }
         if (isUndefinedOrNull(deviceOsVerMap[os])) {
-            deviceOsVerMap[os] = [];
+            deviceOsVerMap[os] = []
         }
-        deviceOsVerMap[os].push(allDevices[i].device_os_version);
+        deviceOsVerMap[os].push(allDevices[i].device_os_version)
     }
 
-    client.deviceOsVerMap = JSON.parse(JSON.stringify(deviceOsVerMap));
+    client.deviceOsVerMap = JSON.parse(JSON.stringify(deviceOsVerMap))
     return deviceOsVerMap
 }
 
 WmClient.prototype.genericRequest = async function (method, path, reqData, parseCb, cacheType) {
 
-    let device = null;
+    let device = null
     let cacheKey = null
     // If the caller function uses a cache, try a cache lookup
     if (!isUndefinedOrNull(cacheType)) {
-        let cacheKey = this.getUserAgentCacheKey(reqData.lookup_headers);
+        cacheKey = this.getUserAgentCacheKey(reqData.lookup_headers)
         if (cacheType === CACHE_TYPE_HEADERS && !isUndefinedOrNull(this.uaCache)) {
-            device = this.uaCache.get(cacheKey);
+            device = this.uaCache.get(cacheKey)
         } else if (cacheType === CACHE_TYPE_DEVICE_ID && !isUndefinedOrNull(this.devIdCache)) {
-            cacheKey = reqData.wurfl_id;
-            device = this.devIdCache.get(reqData.wurfl_id);
+            cacheKey = reqData.wurfl_id
+            device = this.devIdCache.get(reqData.wurfl_id)
         }
 
         // cache has found a matching device, pass it to callback
         if (device != null && !isUndefinedOrNull(device)) {
-            return resultCb(device);
+            return device
         }
     }
     let result
@@ -422,25 +422,25 @@ WmClient.prototype.getApiVersion = () => {
 
 WmClient.prototype.clearCaches = function () {
     if (!isUndefinedOrNull(this.uaCache)) {
-        this.uaCache.reset();
+        this.uaCache.reset()
     }
 
     if (!isUndefinedOrNull(this.devIdCache)) {
-        this.devIdCache.reset();
+        this.devIdCache.reset()
     }
 
-    this.deviceMakesMap = {};
-    this.deviceOsVerMap = {};
+    this.deviceMakesMap = {}
+    this.deviceOsVerMap = {}
 };
 
 WmClient.prototype.safePut = function (cacheType, ckey, cvalue) {
     if (cacheType === CACHE_TYPE_HEADERS && !isUndefinedOrNull(this.uaCache)) {
-        this.uaCache.set(ckey, cvalue);
+        this.uaCache.set(ckey, cvalue)
         return;
     }
 
     if (cacheType === CACHE_TYPE_DEVICE_ID && !isUndefinedOrNull(this.devIdCache)) {
-        this.devIdCache.set(ckey, cvalue);
+        this.devIdCache.set(ckey, cvalue)
     }
 };
 
@@ -449,8 +449,8 @@ WmClient.prototype.safePut = function (cacheType, ckey, cvalue) {
  * @param uaMaxEntries
  */
 WmClient.prototype.setCacheSize = function (uaMaxEntries) {
-    this.uaCache = LRU(uaMaxEntries);
-    this.devIdCache = LRU(20000); // Device ID uses a fixed size
+    this.uaCache = LRU(uaMaxEntries)
+    this.devIdCache = LRU(20000) // Device ID uses a fixed size
 }
 
 function parseInfo(data) {
@@ -477,7 +477,7 @@ function parseDevice(data) {
         data.capabilities,
         data.error,
         data.mtime,
-        data.ltime);
+        data.ltime)
 }
 
 function endsWith(text, needle) {

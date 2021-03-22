@@ -267,8 +267,7 @@ describe("Wm client", () => {
         let device
         try {
             device = await client.lookupRequest(req)
-        }
-        catch (error) {
+        } catch (error) {
             exc = true
         }
         expect(device).toBeUndefined()
@@ -311,7 +310,7 @@ describe("Wm client", () => {
         //  Reset capability filters to return them all
         client.setRequestedVirtualCapabilities([])
     })
-    test('setCacheSize should create the caches with the given size for storing devices', async () =>  {
+    test('setCacheSize should create the caches with the given size for storing devices', async () => {
         client.setCacheSize(1000)
         let device = await client.lookupUserAgent('Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36')
         expect(device).toBeDefined()
@@ -326,10 +325,10 @@ describe("Wm client", () => {
 
         client.clearCachesIfNeeded("2199-12-31", client);
         // Now ltime has changed, so caches are cleared
-            expect(client.uaCache.itemCount).toBe(0)
-            expect(client.devIdCache.itemCount).toBe(0)
+        expect(client.uaCache.itemCount).toBe(0)
+        expect(client.devIdCache.itemCount).toBe(0)
     })
-    test('should remove all elements from both caches', async ()=> {
+    test('should remove all elements from both caches', async () => {
         let device = await client.lookupDeviceID('google_pixel_xl_ver1')
         expect(device).toBeDefined()
         expect(client.devIdCache.itemCount).toBe(1)
@@ -339,18 +338,18 @@ describe("Wm client", () => {
         expect(client.devIdCache.itemCount).toBe(0)
     })
     test('clearCachesIfNeeded, on lookup methods, should remove all elements from both caches only if the server\'s load time changes', async () => {
-            let device = await client.lookupUserAgent('Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36')
-            expect(client.uaCache.itemCount).toBe(1)
-            device = await client.lookupDeviceID('google_pixel_xl_ver1')
-            expect(client.devIdCache.itemCount).toBe(1)
-            // This should NOT reset cache because ltime is not changed
-            client.clearCachesIfNeeded(device.ltime)
-            expect(client.uaCache.itemCount).toBe(1)
-            expect(client.devIdCache.itemCount).toBe(1)
-            client.clearCachesIfNeeded("2199-12-31");
-            // Now ltime has changed, so caches are cleared
-            expect(client.uaCache.itemCount).toBe(0)
-            expect(client.devIdCache.itemCount).toBe(0)
+        let device = await client.lookupUserAgent('Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36')
+        expect(client.uaCache.itemCount).toBe(1)
+        device = await client.lookupDeviceID('google_pixel_xl_ver1')
+        expect(client.devIdCache.itemCount).toBe(1)
+        // This should NOT reset cache because ltime is not changed
+        client.clearCachesIfNeeded(device.ltime)
+        expect(client.uaCache.itemCount).toBe(1)
+        expect(client.devIdCache.itemCount).toBe(1)
+        client.clearCachesIfNeeded("2199-12-31");
+        // Now ltime has changed, so caches are cleared
+        expect(client.uaCache.itemCount).toBe(0)
+        expect(client.devIdCache.itemCount).toBe(0)
     })
     test('when getInfo method is called, client should remove all elements from both caches only if server\'s load time changes', async () => {
         await client.lookupDeviceID('google_pixel_xl_ver1')
@@ -378,15 +377,14 @@ describe("Wm client", () => {
         expect(modelMktName.length).toBeGreaterThan(700)
     })
     test('getAllDevicesForMake should throw an error for the given Make if not exists', async () => {
-            let devicesForMake
-            try{
-                devicesForMake =await client.getAllDevicesForMake("NotExists")
-            }
-            catch (error) {
-                expect(error).toBeDefined()
-                expect(error.message).toContain('does not exist')
-            }
-            expect(devicesForMake).toBeUndefined()
+        let devicesForMake
+        try {
+            devicesForMake = await client.getAllDevicesForMake("NotExists")
+        } catch (error) {
+            expect(error).toBeDefined()
+            expect(error.message).toContain('does not exist')
+        }
+        expect(devicesForMake).toBeUndefined()
     })
     test('getAllOSes should retrieve a json array holding all devices device_os capabilities', async () => {
         let oses = await client.getAllOSes()
@@ -397,10 +395,44 @@ describe("Wm client", () => {
         expect(Object.keys(client.deviceOsVerMap).length).toBeGreaterThan(30)
     })
     test('getAllVersionsForOS should retrieve an array of all devices device_os_version for a given device_os cap', async () => {
-            let versionsForOS = await client.getAllVersionsForOS("Android")
-            expect(versionsForOS).toBeDefined()
-            expect(versionsForOS.length).toBeGreaterThan(30)
-            // WPC-154: client must strip empty OS versions from array
-            expect(versionsForOS.includes('')).toBeFalsy()
+        let versionsForOS = await client.getAllVersionsForOS("Android")
+        expect(versionsForOS).toBeDefined()
+        expect(versionsForOS.length).toBeGreaterThan(30)
+        // WPC-154: client must strip empty OS versions from array
+        expect(versionsForOS.includes('')).toBeFalsy()
     })
-})
+    test('getAllVersionsForOS should throw an error for the given Os if not exists', async () => {
+        let exc = false
+        try {
+            await client.getAllVersionsForOS("NotExists")
+        } catch (error) {
+            exc = true
+            expect(error.message).toContain('does not exist')
+        }
+        expect(exc).toBeTruthy()
+    })
+    test('should show that cache usage is at least one order of magnitude faster than detection without cache',
+        async () => {
+            let tclient = await wmClient.create('http:', 'localhost', '8080', '')
+            let ua = 'Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36'
+            let detectionCount = 10000
+            let startTime = process.hrtime.bigint()
+            for (let i = 0; i < detectionCount; i++) {
+                await tclient.lookupUserAgent(ua)
+            }
+            let totalDetectionTime = process.hrtime.bigint() - startTime
+            // let's add the cache and fill it
+            tclient.setCacheSize(1000)
+            await tclient.lookupUserAgent(ua)
+            expect(tclient.uaCache.itemCount).toBe(1)
+            startTime = process.hrtime.bigint()
+            for (let i = 0; i < detectionCount; i++) {
+                await tclient.lookupUserAgent(ua)
+            }
+            let totalCacheTime = process.hrtime.bigint() - startTime
+            let avgDetectionTime = totalDetectionTime / BigInt(detectionCount)
+            let avgCacheTime = totalCacheTime / BigInt(detectionCount)
+            let passed = avgDetectionTime > avgCacheTime * BigInt(10)
+            expect(passed).toBeTruthy()
+        }, 1200000)
+    })
