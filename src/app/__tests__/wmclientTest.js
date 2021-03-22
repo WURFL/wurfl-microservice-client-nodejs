@@ -15,6 +15,13 @@
  */
 const wmClient = require('../wmclient')
 const http = require("http");
+const lookupRequestTestOpts = {
+    protocol: 'http:',
+    host: 'localhost',
+    port: '8080',
+    method: 'POST',
+    path: '/',
+}
 
 'use strict'
 let client;
@@ -199,14 +206,8 @@ describe("Wm client", () => {
             'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/539.36',
             'accept-encoding': 'gzip, deflate'
         }
-        let options = {
-            protocol: 'http:',
-            host: 'localhost',
-            port: '8080',
-            method: 'POST',
-            path: '/',
-        }
-        let req = http.request(options);
+
+        let req = http.request(lookupRequestTestOpts)
         req.headers = hs
         req.end()
         let device = await client.lookupRequest(req)
@@ -218,5 +219,96 @@ describe("Wm client", () => {
         expect(device.capabilities['is_full_desktop']).toBe('false')
         expect(device.APIVersion).toBeDefined()
         expect(device.mtime).toBeGreaterThan(0)
+    })
+    test('lookupRequest should return a device with a set of selected capabilities', async () => {
+
+        client.setRequestedStaticCapabilities(['brand_name', 'model_name'])
+        client.setRequestedVirtualCapabilities(['is_robot', 'form_factor'])
+        // In order to emulate node js behaviour we must lowercase (see: https://nodejs.org/docs/latest-v0.10.x/api/http.html) "Keys are lowercased. Values are not modified"
+        let hs = {
+            'content-type': 'application/json',
+            'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36',
+            'accept-encoding': 'gzip, deflate'
+        }
+
+        let req = http.request(lookupRequestTestOpts)
+        req.headers = hs
+        req.end()
+        let device = await client.lookupRequest(req)
+        expect(device).toBeDefined()
+        expect(client.getCapabilityCount(device)).toBeGreaterThan(0)
+        expect(device.capabilities['wurfl_id']).toBe('asus_z017d_ver1')
+        expect(device.capabilities['brand_name']).toBe('Asus')
+        expect(device.capabilities['model_name']).toBe('Z017D')
+        expect(device.capabilities['is_robot']).toBe('false')
+        expect(device.capabilities['form_factor']).toBe('Smartphone')
+        expect(device.APIVersion).toBeDefined()
+        expect(device.mtime).toBeGreaterThan(0)
+        // This capability is not included in the filter
+        expect(device.capabilities['is_ios']).toBeUndefined()
+        //  Reset capability filters to return them all
+        client.setRequestedStaticCapabilities([])
+        client.setRequestedVirtualCapabilities([])
+    })
+    test('should return an error is server is not available', async () => {
+
+        client.port = 9090;
+
+        // In order to emulate node js behaviour we must lowercase (see: https://nodejs.org/docs/latest-v0.10.x/api/http.html) "Keys are lowercased. Values are not modified"
+        let hs = {
+            'content-type': 'application/json',
+            'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36',
+            'accept-encoding': 'gzip, deflate'
+        }
+        let req = http.request(lookupRequestTestOpts)
+        req.headers = hs;
+        req.end();
+        let exc = false
+        let device
+        try {
+            device = await client.lookupRequest(req)
+        }
+        catch (error) {
+            exc = true
+        }
+        expect(device).toBeUndefined()
+        expect(exc).toBeTruthy()
+        client.port = 8080;
+    })
+    test('setRequestedCapabilities assign each capability in the given array to the proper specific array of static or virtual capabilities', async () => {
+        client.setRequestedCapabilities(["is_full_desktop", "marketing_name", "brand_name", "model_name", "form_factor", "is_robot", "is_tablet"]);
+        expect(client.reqStaticCaps).toStrictEqual(['marketing_name', 'brand_name', 'model_name', 'is_tablet'])
+        expect(client.reqVCaps).toStrictEqual(['is_full_desktop', 'form_factor', 'is_robot'])
+        //  Reset capability filters to return them all
+        client.setRequestedStaticCapabilities([])
+        client.setRequestedVirtualCapabilities([])
+    })
+    test('setRequestedStaticCapabilities should discard non existing capability names when setting the required capabilities arrays', async () => {
+        client.setRequestedStaticCapabilities(['brand_name', 'model_name', 'marketing_name', 'wrong_cap'])
+        let device = await client.lookupDeviceID('nokia_generic_series40')
+        expect(device).toBeDefined()
+        let capCount = client.getCapabilityCount(device)
+        expect(capCount).toBe(4) // 3 static caps chose + wurfl_id
+        // resets static cap filter, allowing all caps to be returned
+        client.setRequestedStaticCapabilities(undefined)
+        device = await client.lookupDeviceID('nokia_generic_series40')
+        capCount = client.getCapabilityCount(device)
+        expect(capCount).toBeGreaterThan(20)
+        //  Reset capability filters to return them all
+        client.setRequestedStaticCapabilities([])
+        client.setRequestedVirtualCapabilities([])
+    })
+    test('setRequestedVirtualCapabilities should discard non existing capability names when setting the required capabilities arrays', async () => {
+        client.setRequestedVirtualCapabilities(['is_robot', 'wrong_vcap', 'wrong_vcap 2'])
+        let device = await client.lookupDeviceID('nokia_generic_series40')
+        expect(device).toBeDefined()
+        let capCount = client.getCapabilityCount(device)
+        expect(capCount).toBe(2) // 1 vcap + wurfl_id
+        client.setRequestedVirtualCapabilities(undefined)
+        device = await client.lookupDeviceID('nokia_generic_series40')
+        capCount = client.getCapabilityCount(device)
+        expect(capCount).toBeGreaterThan(20)
+        //  Reset capability filters to return them all
+        client.setRequestedVirtualCapabilities([])
     })
 })
