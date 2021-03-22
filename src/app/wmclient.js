@@ -97,7 +97,9 @@ WmClient.prototype.getInfo = async function () {
 
     let full_url = this.createFullUrl('/v2/getinfo/json')
     let info_response = await getJSON(full_url)
-    return parseInfo(info_response)
+    let info = parseInfo(info_response)
+    this.clearCachesIfNeeded(info.ltime)
+    return info
 }
 
 /**
@@ -376,7 +378,7 @@ WmClient.prototype.getDeviceOsVerMap = async function () {
     return deviceOsVerMap
 }
 
-WmClient.prototype.genericRequest = async function (method, path, reqData, parseCb, resultCb, cacheType) {
+WmClient.prototype.genericRequest = async function (method, path, reqData, parseCb, cacheType) {
 
     let device = null;
     let cacheKey = null
@@ -449,7 +451,7 @@ WmClient.prototype.safePut = function (cacheType, ckey, cvalue) {
 WmClient.prototype.setCacheSize = function (uaMaxEntries) {
     this.uaCache = LRU(uaMaxEntries);
     this.devIdCache = LRU(20000); // Device ID uses a fixed size
-};
+}
 
 function parseInfo(data) {
     let static_caps = data.static_caps === null ? [] : data.static_caps

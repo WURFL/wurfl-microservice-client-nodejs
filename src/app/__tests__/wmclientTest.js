@@ -311,4 +311,96 @@ describe("Wm client", () => {
         //  Reset capability filters to return them all
         client.setRequestedVirtualCapabilities([])
     })
+    test('setCacheSize should create the caches with the given size for storing devices', async () =>  {
+        client.setCacheSize(1000)
+        let device = await client.lookupUserAgent('Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36')
+        expect(device).toBeDefined()
+        expect(client.uaCache.itemCount).toBe(1)
+        device = await client.lookupDeviceID('google_pixel_xl_ver1')
+        expect(device).toBeDefined()
+        expect(client.devIdCache.itemCount).toBe(1)
+        // This should NOT reset cache because ltime has not changed
+        client.clearCachesIfNeeded(device.ltime, client);
+        expect(client.uaCache.itemCount).toBe(1)
+        expect(client.devIdCache.itemCount).toBe(1)
+
+        client.clearCachesIfNeeded("2199-12-31", client);
+        // Now ltime has changed, so caches are cleared
+            expect(client.uaCache.itemCount).toBe(0)
+            expect(client.devIdCache.itemCount).toBe(0)
+    })
+    test('should remove all elements from both caches', async ()=> {
+        let device = await client.lookupDeviceID('google_pixel_xl_ver1')
+        expect(device).toBeDefined()
+        expect(client.devIdCache.itemCount).toBe(1)
+
+        client.clearCaches();
+        expect(client.uaCache.itemCount).toBe(0)
+        expect(client.devIdCache.itemCount).toBe(0)
+    })
+    test('clearCachesIfNeeded, on lookup methods, should remove all elements from both caches only if the server\'s load time changes', async () => {
+            let device = await client.lookupUserAgent('Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36')
+            expect(client.uaCache.itemCount).toBe(1)
+            device = await client.lookupDeviceID('google_pixel_xl_ver1')
+            expect(client.devIdCache.itemCount).toBe(1)
+            // This should NOT reset cache because ltime is not changed
+            client.clearCachesIfNeeded(device.ltime)
+            expect(client.uaCache.itemCount).toBe(1)
+            expect(client.devIdCache.itemCount).toBe(1)
+            client.clearCachesIfNeeded("2199-12-31");
+            // Now ltime has changed, so caches are cleared
+            expect(client.uaCache.itemCount).toBe(0)
+            expect(client.devIdCache.itemCount).toBe(0)
+    })
+    test('when getInfo method is called, client should remove all elements from both caches only if server\'s load time changes', async () => {
+        await client.lookupDeviceID('google_pixel_xl_ver1')
+        expect(client.devIdCache.itemCount).toBe(1)
+        client.ltime = "1999-12-31"; // force client ltime to trigger cache reset
+        let info = await client.getInfo()
+        expect(info).toBeDefined()
+        // getInfo will have real ltime from server, so cache should have been reset
+        expect(client.devIdCache.itemCount).toBe(0)
+    })
+    test('getAllDeviceMakes should retrieve a json array holding all device makes', async () => {
+        let deviceMakes = await client.getAllDeviceMakes()
+        expect(deviceMakes).toBeDefined()
+        expect(deviceMakes.length).toBeGreaterThan(0)
+        expect(deviceMakes[0]).toBeDefined()
+        // deviceMakesMap cache has been set
+        expect(Object.keys(client.deviceMakesMap).length).toBeGreaterThan(2000)
+    })
+    test('getAllDevicesForMake should retrieve an array of an aggregate containing model_names + marketing_names for the given Make', async () => {
+        let modelMktName = await client.getAllDevicesForMake("Nokia")
+        expect(modelMktName).toBeDefined()
+        expect(modelMktName.length).toBeGreaterThan(0)
+        expect(modelMktName[0].modelName).toBeDefined()
+        expect(modelMktName[0].modelName.length).toBeGreaterThan(0)
+        expect(modelMktName.length).toBeGreaterThan(700)
+    })
+    test('getAllDevicesForMake should throw an error for the given Make if not exists', async () => {
+            let devicesForMake
+            try{
+                devicesForMake =await client.getAllDevicesForMake("NotExists")
+            }
+            catch (error) {
+                expect(error).toBeDefined()
+                expect(error.message).toContain('does not exist')
+            }
+            expect(devicesForMake).toBeUndefined()
+    })
+    test('getAllOSes should retrieve a json array holding all devices device_os capabilities', async () => {
+        let oses = await client.getAllOSes()
+        expect(oses).toBeDefined()
+        expect(oses.length).toBeGreaterThan(30)
+        expect(oses[0]).toBeDefined()
+        // deviceOsVerMap cache has been set
+        expect(Object.keys(client.deviceOsVerMap).length).toBeGreaterThan(30)
+    })
+    test('getAllVersionsForOS should retrieve an array of all devices device_os_version for a given device_os cap', async () => {
+            let versionsForOS = await client.getAllVersionsForOS("Android")
+            expect(versionsForOS).toBeDefined()
+            expect(versionsForOS.length).toBeGreaterThan(30)
+            // WPC-154: client must strip empty OS versions from array
+            expect(versionsForOS.includes('')).toBeFalsy()
+    })
 })
