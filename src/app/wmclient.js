@@ -22,10 +22,10 @@ const CACHE_TYPE_DEVICE_ID = 'dId-cache'
 
 /**
  * WmClient holds http connection data to server and the list capability it must return in response
- * @param scheme
- * @param host
- * @param port
- * @param baseURI
+ * @param scheme {string} protocol scheme (http or https)
+ * @param host {string} IP of the WURFL Microservice server
+ * @param port {string} port number of the WURFL Microservice server
+ * @param baseURI {string} additional part of the path (if any)
  * @constructor
  */
 function WmClient(scheme, host, port, baseURI) {
@@ -47,9 +47,8 @@ function WmClient(scheme, host, port, baseURI) {
 
 /**
  * lookupUserAgent - Searches WURFL device data using the given user-agent for detection
- * @param userAgent
- * @param resultCallback
- * @returns {JSONDeviceData}
+ * @param {string} userAgent the user-agent string
+ * @return {JSONDeviceData} a structure with the device information and capabilities
  */
 WmClient.prototype.lookupUserAgent = async function (userAgent) {
 
@@ -61,10 +60,9 @@ WmClient.prototype.lookupUserAgent = async function (userAgent) {
 
 /**
  * lookupDeviceID - Searches WURFL device data using its wurfl_id value
- * @param wurflId
- * @returns {JSONDeviceData}
+ * @param wurflId {string} the unique id of a WURFL device
+ * @return {JSONDeviceData} a structure with the device information and capabilities
  */
-
 WmClient.prototype.lookupDeviceID = async function (wurflId) {
 
     const lHeaders = {}
@@ -85,13 +83,18 @@ WmClient.prototype.createPath = function (path) {
     }
 }
 
+/**
+ * Creates the full path of the API call
+ * @param {string} path path part of a URL
+ * @return {string} the full URL
+ */
 WmClient.prototype.createFullUrl = function (path) {
     return this.scheme + '//' + this.host + ':' + this.port + this.createPath(path)
 }
 
 /**
  * getInfo - Returns information about the running WM server and API
- * @returns {JSONInfoData}
+ * @return {JSONInfoData} A structure holding info about WM server and the capabilities it exposes
  */
 WmClient.prototype.getInfo = async function () {
 
@@ -103,11 +106,12 @@ WmClient.prototype.getInfo = async function () {
 }
 
 /**
- * Create a WMClient
- * @param scheme
- * @param host
- * @param port
- * @param baseURI
+ * Creates a WMClient
+ * @param scheme {string} protocol scheme (http or https)
+ * @param host {string} IP of the WURFL Microservice server
+ * @param port {string} port number of the WURFL Microservice server
+ * @param baseURI {string} additional part of the path (if any)
+ * @return {WmClient} the client object to use for accessing WM server
  */
 async function create(scheme, host, port, baseURI) {
     let sc = scheme
@@ -130,10 +134,6 @@ async function create(scheme, host, port, baseURI) {
     return client
 }
 
-WmClient.prototype.createUrl = function (path) {
-    return this.scheme + '//' + this.host + ':' + this.port + this.createPath(path)
-}
-
 checkData = (jsonInfoData) => {
     return jsonInfoData.wmVersion.length > 0 &&
         jsonInfoData.wurflAPIVersion.length > 0 &&
@@ -142,8 +142,9 @@ checkData = (jsonInfoData) => {
 }
 
 /**
- * setRequestedCapabilities - set the given capability names to the set they belong
- * @param caps
+ * setRequestedCapabilities - set the given capability names to that the client requires to the WM server
+ * @param caps {array} list of capabilities that you want to select from the ones exposed by the server
+ * @return {void} Nothing
  */
 WmClient.prototype.setRequestedCapabilities = function (caps) {
 
@@ -170,8 +171,10 @@ WmClient.prototype.setRequestedCapabilities = function (caps) {
 }
 
 /**
- * setRequestedStaticCapabilities - set list of static capabilities to return
- * @param stCaps
+ * setRequestedStaticCapabilities - set the given static capability names to that the client requires to the WM server
+ * @param stCaps {array} list of static capabilities that you want to select from the ones exposed by the server.
+ * Non static or non existing capabilities will be ignored.
+ * @return {void} Nothing
  */
 
 WmClient.prototype.setRequestedStaticCapabilities = function (stCaps) {
@@ -194,10 +197,11 @@ WmClient.prototype.setRequestedStaticCapabilities = function (stCaps) {
 }
 
 /**
- * setRequestedVirtualCapabilities - set list of virtual capabilities to return
- * @param stCaps
+ * setRequestedVirtualCapabilities - set the given virtual capability names to that the client requires to the WM server
+ * @param vCaps {array} list of virtual capabilities that you want to select from the ones exposed by the server.
+ * Non virtual or non existing capabilities will be ignored.
+ * @return {void} Nothing
  */
-
 WmClient.prototype.setRequestedVirtualCapabilities = function (vCaps) {
 
     if (isUndefinedOrNull(vCaps) || vCaps === null) {
@@ -219,8 +223,8 @@ WmClient.prototype.setRequestedVirtualCapabilities = function (vCaps) {
 
 /**
  * lookupRequest - detects a device and returns its data in JSON format
- * @param nodeReq
- * @returns {JSONDeviceData}
+ * @param nodeReq {http.ClientRequest} an HTTP request structure
+ * @return {JSONDeviceData} a structure with the device information and capabilities
  */
 WmClient.prototype.lookupRequest = async function (nodeReq) {
     // copy headers
@@ -238,8 +242,8 @@ WmClient.prototype.lookupRequest = async function (nodeReq) {
 
 /**
  * hasStaticCapability - returns true if the given capName exist in this client' static capability set, false otherwise
- * @param capName
- * @returns {boolean}
+ * @param capName {string} static capability name
+ * @return {boolean}
  */
 WmClient.prototype.hasStaticCapability = function (capName) {
     return this.staticCaps.indexOf(capName) !== -1
@@ -247,8 +251,8 @@ WmClient.prototype.hasStaticCapability = function (capName) {
 
 /**
  * hasVirtualCapability - returns true if the given capName exist in this client' virtual capability set, false otherwise
- * @param vcapName
- * @returns {boolean}
+ * @param vcapName {string} the virtual capability name
+ * @return {boolean}
  */
 WmClient.prototype.hasVirtualCapability = function (vcapName) {
     return this.virtualCaps.indexOf(vcapName) !== -1
@@ -263,6 +267,7 @@ WmClient.prototype.getCapabilityCount = function (device) {
 
 /**
  * getAllDeviceMakes returns identity data for all devices in WM server
+ * @return {Array} the list of the device makers
  */
 
 WmClient.prototype.getAllDeviceMakes = function () {
@@ -279,7 +284,8 @@ WmClient.prototype.getAllDeviceMakes = function () {
 
 /**
  * getAllDevicesForMake Returns an array of an aggregate containing model_names + marketing_names for the given Make.
- * @param make
+ * @param make {string} name of a device maker (eg: 'Apple')
+ * @return {Array} An aggregate containing model_names + marketing_names for the given Make
  */
 WmClient.prototype.getAllDevicesForMake = async function (make) {
     let client = this
@@ -290,7 +296,7 @@ WmClient.prototype.getAllDevicesForMake = async function (make) {
     }
     return ob
 }
-
+// For internal use only
 WmClient.prototype.getDeviceMakesMap = async function () {
     let client = this;
 
@@ -322,9 +328,8 @@ WmClient.prototype.getDeviceMakesMap = async function () {
 
 /**
  * getAllOSes returns of all devices device_os capabilities
- * @returns []
+ * @return {Array} list of device OSes
  */
-
 WmClient.prototype.getAllOSes = async function () {
     let devOsVerMap = await this.getDeviceOsVerMap()
     return Object.keys(devOsVerMap)
@@ -332,10 +337,8 @@ WmClient.prototype.getAllOSes = async function () {
 
 /**
  * getAllVersionsForOS Returns an array of all devices device_os_version for a given device_os cap.
- * @param device_os
+ * @param {string} device_os device OS name for which you want to get the list of versions
  */
-
-
 WmClient.prototype.getAllVersionsForOS = async function (device_os) {
     let devOsVerMap = await this.getDeviceOsVerMap()
 
@@ -350,7 +353,7 @@ WmClient.prototype.getAllVersionsForOS = async function (device_os) {
     return ob
 }
 
-
+// for internal use only
 WmClient.prototype.getDeviceOsVerMap = async function () {
 
     let client = this
@@ -378,6 +381,7 @@ WmClient.prototype.getDeviceOsVerMap = async function () {
     return deviceOsVerMap
 }
 
+// for internal use only
 WmClient.prototype.genericRequest = async function (method, path, reqData, parseCb, cacheType) {
 
     let device = null
@@ -405,6 +409,7 @@ WmClient.prototype.genericRequest = async function (method, path, reqData, parse
     } else if (method === 'POST') {
         let server_address = this.scheme + '//' + this.host + ':' + this.port
         let post = bent(server_address, 'POST', 'json', 200)
+        post.timeout = this.httpTimeout
         let postResponse = await post(path, reqData)
         result = parseCb(postResponse)
         this.addToCache(cacheType, cacheKey, result)
@@ -413,13 +418,16 @@ WmClient.prototype.genericRequest = async function (method, path, reqData, parse
 }
 
 /**
- * getApiVersion, returns the API version
- * @returns {string}
+ * getApiVersion, returns the client API version
+ * @return {string} this client API version
  */
 WmClient.prototype.getApiVersion = () => {
     return '2.2.0'
 }
 
+/**
+ * Clears the client caches
+ */
 WmClient.prototype.clearCaches = function () {
     if (!isUndefinedOrNull(this.uaCache)) {
         this.uaCache.reset()
@@ -446,13 +454,14 @@ WmClient.prototype.safePut = function (cacheType, ckey, cvalue) {
 
 /**
  * setCacheSize : set UA cache size
- * @param uaMaxEntries
+ * @param uaMaxEntries {int} max size of the cache
  */
 WmClient.prototype.setCacheSize = function (uaMaxEntries) {
     this.uaCache = LRU(uaMaxEntries)
     this.devIdCache = LRU(20000) // Device ID uses a fixed size
 }
 
+// internal use only
 function parseInfo(data) {
     let static_caps = data.static_caps === null ? [] : data.static_caps
     let virtual_caps = data.virtual_caps === null ? [] : data.virtual_caps
@@ -470,6 +479,7 @@ function parseInfo(data) {
     return info;
 }
 
+// internal use only
 function parseDevice(data) {
 
     return new model.JSONDeviceData(
@@ -484,6 +494,11 @@ function endsWith(text, needle) {
     return text.indexOf(needle, text.length - needle.length) !== -1;
 }
 
+/**
+ *
+ * @param value {object} any object
+ * @return {boolean} true if the object is undefined or null, false otherwise
+ */
 function isUndefinedOrNull(value) {
     return (typeof value === "undefined" || value == null)
 }
@@ -501,6 +516,7 @@ WmClient.prototype.getUserAgentCacheKey = function (headers) {
     return cacheKey
 }
 
+// internal use only: invokes clear cache only if the given timestamp (as int number) is different from the one stored in the client
 WmClient.prototype.clearCachesIfNeeded = function (ltime) {
     if (!isUndefinedOrNull(ltime) && ltime !== this.ltime) {
         this.clearCaches()
@@ -508,6 +524,12 @@ WmClient.prototype.clearCachesIfNeeded = function (ltime) {
     }
 }
 
+/**
+ * Adds an element to cache
+ * @param cacheType {string} the cache type. If different from CACHE_TYPE_HEADERS or CACHE_TYPE_DEVICE_ID it is ignored
+ * @param cacheKey {string} cache key
+ * @param result {void} Nothing
+ */
 WmClient.prototype.addToCache = function (cacheType, cacheKey, result) {
     // Clear cache if last load time of wurfl.xml on server has changed
     this.clearCachesIfNeeded(result.ltime)
@@ -519,13 +541,14 @@ WmClient.prototype.addToCache = function (cacheType, cacheKey, result) {
 }
 
 /**
- * SetHTTPTimeout sets the connection and transfer timeouts for this client in seconds.
- * This function should be called before performing any connection to WM server
- * @param timeout
+ * SetHTTPTimeout sets the connection and transfer timeouts for this client in milliseconds.
+ * This function should be called before performing any connection to WM server.
+ * @param timeout {int} timeout in milliseconds
  */
 WmClient.prototype.setHTTPTimeout = (timeout) => {
     if (!isUndefinedOrNull(timeout) && timeout >= 10000) {
         this.httpTimeout = timeout
+        getJSON.timeout = timeout
     }
 }
 
