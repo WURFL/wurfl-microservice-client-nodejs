@@ -13,12 +13,12 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-const bent = require('bent')
-const getJSON = bent('json')
 const model = require('./model');
 const LRU = require('lru-cache');
 const CACHE_TYPE_HEADERS = 'ua-cache'
 const CACHE_TYPE_DEVICE_ID = 'dId-cache'
+const axios = require('axios').default
+
 
 /**
  * WmClient holds http connection data to server and the list capability it must return in response
@@ -99,8 +99,8 @@ WmClient.prototype.createFullUrl = function (path) {
 WmClient.prototype.getInfo = async function () {
 
     let full_url = this.createFullUrl('/v2/getinfo/json')
-    let info_response = await getJSON(full_url)
-    let info = parseInfo(info_response)
+    let info_response = await axios.get(full_url)
+    let info = parseInfo(info_response.data)
     this.clearCachesIfNeeded(info.ltime)
     return info
 }
@@ -117,6 +117,11 @@ async function create(scheme, host, port, baseURI) {
     let sc = scheme
     if (scheme.length > 0) {
         sc = scheme
+        if (!sc.startsWith('http') && !sc.startsWith('https')){
+            throw new Error(`Unknown protocol ${sc}`)
+        }
+
+
         if (!endsWith(sc, ":")) {
             sc += ":"
         }
@@ -307,7 +312,7 @@ WmClient.prototype.getDeviceMakesMap = async function () {
     }
 
     let fullUrl = client.createFullUrl('/v2/alldevices/json')
-    let allDevices = await getJSON(fullUrl)
+    let allDevices = (await axios.get(fullUrl)).data
 
     let deviceMakesMap = {}
     for (let i = 0; i < allDevices.length; i++) {
@@ -364,7 +369,7 @@ WmClient.prototype.getDeviceOsVerMap = async function () {
     }
 
     let fullUrl = client.createFullUrl('/v2/alldeviceosversions/json')
-    const allDevices = await getJSON(fullUrl)
+    const allDevices = (await axios.get(fullUrl)).data
     let deviceOsVerMap = {};
     for (let i = 0; i < allDevices.length; i++) {
         let os = allDevices[i].device_os
@@ -403,15 +408,12 @@ WmClient.prototype.genericRequest = async function (method, path, reqData, parse
     }
     let result
     if (method === 'GET') {
-        let getResponse = await getJSON(this.createFullUrl(path))
-        result = parseCb(getResponse)
+        let getResponse = await axios.get(this.createFullUrl(path))
+        result = parseCb(getResponse.data)
         this.addToCache(cacheType, cacheKey, result)
     } else if (method === 'POST') {
-        let server_address = this.scheme + '//' + this.host + ':' + this.port
-        let post = bent(server_address, 'POST', 'json', 200)
-        post.timeout = this.httpTimeout
-        let postResponse = await post(path, reqData)
-        result = parseCb(postResponse)
+        let postResponse = await axios.post(this.createFullUrl(path), reqData)
+        result = parseCb(postResponse.data)
         this.addToCache(cacheType, cacheKey, result)
     }
     return result
@@ -542,13 +544,13 @@ WmClient.prototype.addToCache = function (cacheType, cacheKey, result) {
 
 /**
  * SetHTTPTimeout sets the connection and transfer timeouts for this client in milliseconds.
- * This function should be called before performing any connection to WM server.
+ * This function does not allow values under 10000 milliseconds.
  * @param timeout {int} timeout in milliseconds
  */
-WmClient.prototype.setHTTPTimeout = (timeout) => {
+WmClient.prototype.setHTTPTimeout = function (timeout) {
     if (!isUndefinedOrNull(timeout) && timeout >= 10000) {
         this.httpTimeout = timeout
-        getJSON.timeout = timeout
+        axios.defaults.timeout = timeout
     }
 }
 

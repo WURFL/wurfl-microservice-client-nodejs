@@ -33,10 +33,17 @@ describe("Wm client", () => {
     })
 
     test('client Create successful', async () => {
-        let wm = await wmClient.create('http:', 'localhost', '8080', '')
-        expect(wm.importantHeaders.length).toBe(7)
-        expect(wm.virtualCaps.length).toBeGreaterThan(0)
-        expect(wm.staticCaps.length).toBeGreaterThan(0)
+        try {
+
+
+            let wm = await wmClient.create('http:', 'localhost', '8080', '')
+            expect(wm.importantHeaders.length).toBe(7)
+            expect(wm.virtualCaps.length).toBeGreaterThan(0)
+            expect(wm.staticCaps.length).toBeGreaterThan(0)
+        }
+        catch (error){
+            fail(error.message)
+        }
     })
 
     test('create client should work when schema is provided without the column', async () => {
@@ -69,7 +76,7 @@ describe("Wm client", () => {
             await wmClient.create('', '', '', '')
         } catch (error) {
             exc = true
-            expect(error.message).toContain('Invalid URL')
+            expect(error.message).toContain('ECONNREFUSED')
         }
         expect(exc).toBeTruthy()
     })
@@ -410,6 +417,16 @@ describe("Wm client", () => {
             expect(error.message).toContain('does not exist')
         }
         expect(exc).toBeTruthy()
+    })
+    test('setHTTPTimeout should change internal HTTP timeout ', async () => {
+        client.setHTTPTimeout(-1)
+        // Doesn't set a negative timeout
+        expect(client.httpTimeout).toBe(10000)
+
+        client.setHTTPTimeout(10001)
+        expect(client.httpTimeout).toBe(10001)
+
+
     })
     test('should show that cache usage is at least one order of magnitude faster than detection without cache',
         async () => {

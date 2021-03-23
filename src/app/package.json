@@ -2,7 +2,8 @@
   "name": "wmclient",
   "jest": {
     "verbose": true,
-    "cacheDirectory": "./node_modules/.cache/jest"
+    "cacheDirectory": "./node_modules/.cache/jest",
+    "testEnvironment": "node"
   },
   "description": "WURFL by ScientiaMobile. WURFL Microservice Client",
   "version": "2.2.0",
@@ -19,9 +20,9 @@
     "client"
   ],
   "dependencies": {
-    "bent": "^7.3.12",
     "lru-cache": "4.1.1",
-    "unirest": "0.6.0"
+    "unirest": "0.6.0",
+    "axios": "^0.21.1"
   },
   "bugs": {
     "url": "null"
@@ -30,10 +31,10 @@
     "test": "jest"
   },
   "devDependencies": {
-    "jest": "^25.0.0",
     "chai": "^4.3.4",
-    "mocha": "^6.2.3",
+    "jest": "^25.0.0",
     "jsdoc": "^3.6.6",
+    "mocha": "^6.2.3",
     "mocha-teamcity-reporter": "^1.1.1"
   }
 }
