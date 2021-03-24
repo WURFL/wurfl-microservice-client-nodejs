@@ -1,7 +1,13 @@
 {
   "name": "wmclient",
+  "jest": {
+    "verbose": true,
+    "cacheDirectory": "./node_modules/.cache/jest",
+    "testEnvironment": "node",
+    "testResultsProcessor": "jest-teamcity-reporter"
+  },
   "description": "WURFL by ScientiaMobile. WURFL Microservice Client",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "license": "Apache-2.0",
   "main": "./wmclient.js",
   "repository": "https://github.com/WURFL/wurfl-microservice-client-nodejs",
@@ -15,18 +21,21 @@
     "client"
   ],
   "dependencies": {
-    "unirest": "0.6.0",
-    "lru-cache": "4.1.1"
+    "axios": "^0.21.1",
+    "lru-cache": "4.1.1",
+    "unirest": "0.6.0"
   },
   "bugs": {
     "url": "null"
   },
   "scripts": {
-    "test": "mocha"
+    "test": "jest"
   },
   "devDependencies": {
-    "chai": "^4.2.0",
-    "mocha": "^6.2.2",
-    "mocha-teamcity-reporter": "^1.1.1"
+    "chai": "^4.3.4",
+    "jest": "^25.0.0",
+    "jest-teamcity-reporter": "^0.9.0",
+    "jsdoc": "^3.6.6",
+    "mocha": "^6.2.3"
   }
 }

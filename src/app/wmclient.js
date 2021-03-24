@@ -13,591 +13,545 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-var http = require('http');
-var model = require('./model');
-var LRU  = require('lru-cache');
+const model = require('./model');
+const LRU = require('lru-cache');
+const CACHE_TYPE_HEADERS = 'ua-cache'
+const CACHE_TYPE_DEVICE_ID = 'dId-cache'
+const axios = require('axios').default
+
 
 /**
  * WmClient holds http connection data to server and the list capability it must return in response
- * @param scheme
- * @param host
- * @param port
- * @param baseURI
+ * @param scheme {string} protocol scheme (http or https)
+ * @param host {string} IP of the WURFL Microservice server
+ * @param port {string} port number of the WURFL Microservice server
+ * @param baseURI {string} additional part of the path (if any)
  * @constructor
  */
 function WmClient(scheme, host, port, baseURI) {
-    this.scheme = scheme,
-        this.host = host;
-    this.port = port;
-    this.baseURI = baseURI;
-    this.importantHeaders = '';
-    this.virtualCaps = [];
-    this.staticCaps = [];
-    this.reqVCaps = [];
-    this.reqStaticCaps = [];
-    this.uaCache;
-    this.devIdCache;
+    this.scheme = scheme
+    this.host = host
+    this.port = port
+    this.baseURI = baseURI
+    this.importantHeaders
+    this.virtualCaps = []
+    this.staticCaps = []
+    this.reqVCaps = []
+    this.reqStaticCaps = []
+    this.uaCache = undefined
+    this.devIdCache = undefined
     this.httpTimeout = 10000;
-
-    this.deviceMakesMap;
-    this.deviceOsVerMap;
+    this.deviceMakesMap = {}
+    this.deviceOsVerMap = {}
 }
 
 /**
  * lookupUserAgent - Searches WURFL device data using the given user-agent for detection
- * @param userAgent
- * @param resultCallback
- * @returns {JSONDeviceData}
+ * @param {string} userAgent the user-agent string
+ * @return {JSONDeviceData} a structure with the device information and capabilities
  */
-WmClient.prototype.lookupUserAgent = function (userAgent, resultCallback) {
-    var options = this.getOptions('/v2/lookupuseragent/json', 'POST');
+WmClient.prototype.lookupUserAgent = async function (userAgent) {
 
-    var lHeaders = {'User-Agent': userAgent};
-    var reqData = new model.Request(lHeaders, this.reqStaticCaps, this.reqVCaps);
-    this.genericRequest(options, reqData, parseDevice, resultCallback, "ua-cache", this);
-};
+    let lHeaders = {'User-Agent': userAgent};
+    let reqData = new model.Request(lHeaders, this.reqStaticCaps, this.reqVCaps);
+    return this.genericRequest('POST', '/v2/lookupuseragent/json', reqData, parseDevice, CACHE_TYPE_HEADERS);
+}
+
 
 /**
  * lookupDeviceID - Searches WURFL device data using its wurfl_id value
- * @param wurflId
- * @param cb
- * @returns {JSONDeviceData}
+ * @param wurflId {string} the unique id of a WURFL device
+ * @return {JSONDeviceData} a structure with the device information and capabilities
  */
-WmClient.prototype.lookupDeviceID = function (wurflId, cb) {
-    var options = this.getOptions('/v2/lookupdeviceid/json', 'POST');
+WmClient.prototype.lookupDeviceID = async function (wurflId) {
 
-    var lHeaders = {};
-    var reqData = new model.Request(lHeaders, this.reqStaticCaps, this.reqVCaps, wurflId);
-    this.genericRequest(options, reqData, parseDevice, cb, "dId-cache", this);
-};
-
+    const lHeaders = {}
+    let reqData = new model.Request(lHeaders, this.reqStaticCaps, this.reqVCaps, wurflId);
+    let device = await this.genericRequest('POST', '/v2/lookupdeviceid/json', reqData, parseDevice, CACHE_TYPE_DEVICE_ID);
+    if (!isUndefinedOrNull(device.error) && device.error.length > 0){
+        throw new Error(device.error)
+    }
+    return device
+}
 
 WmClient.prototype.createPath = function (path) {
 
     if (this.baseURI.length > 0) {
-        return "/" + this.baseURI + path;
+        return "/" + this.baseURI + path
     } else {
-        return path;
+        return path
     }
-};
+}
+
+/**
+ * Creates the full path of the API call
+ * @param {string} path path part of a URL
+ * @return {string} the full URL
+ */
+WmClient.prototype.createFullUrl = function (path) {
+    return this.scheme + '//' + this.host + ':' + this.port + this.createPath(path)
+}
 
 /**
  * getInfo - Returns information about the running WM server and API
- * @param cb
- * @returns {JSONInfoData}
+ * @return {JSONInfoData} A structure holding info about WM server and the capabilities it exposes
  */
-WmClient.prototype.getInfo = function (cb) {
-    var path = this.createPath('/v2/getinfo/json');
-    var options = this.getOptions(path, 'GET');
-    this.genericRequest(options, '', parseInfo, cb, undefined, this);
-};
+WmClient.prototype.getInfo = async function () {
 
-/**
- * Create a WMClient
- * @param scheme
- * @param host
- * @param port
- * @param baseURI
- * @param cb
- */
-function create(scheme, host, port, baseURI, cb) {
-    var sc = scheme;
-    if (scheme.length > 0) {
-        sc = scheme;
-        if (!endsWith(sc, ":")) {
-            sc += ":";
-        }
-    } else {
-        sc = 'http:';
-    }
-
-    var client = new WmClient(sc, host, port, baseURI);
-    // Test server connection and save important headers taken using getInfo function
-    var data;
-    client.getInfo(function (result, error) {
-        if(!isUndefined(error)){
-            return cb(undefined, error)
-        }
-
-        data = result;
-        client.importantHeaders = data.importantHeaders;
-        client.staticCaps = data.staticCaps;
-        client.virtualCaps = data.virtualCaps;
-        client.staticCaps.sort();
-        client.virtualCaps.sort();
-        cb(client, undefined);
-    });
+    let full_url = this.createFullUrl('/v2/getinfo/json')
+    let info_response = await axios.get(full_url)
+    let info = parseInfo(info_response.data)
+    this.clearCachesIfNeeded(info.ltime)
+    return info
 }
 
-WmClient.prototype.getOptions = function (path, method) {
-    return {
-        protocol: this.scheme,
-        host: this.host,
-        port: this.port,
-        method: method,
-        path: path,
-        timeout: this.httpTimeout,
-        headers: {
-            'Content-Type': 'application/json'
+/**
+ * Creates a WMClient
+ * @param scheme {string} protocol scheme (http or https)
+ * @param host {string} IP of the WURFL Microservice server
+ * @param port {string} port number of the WURFL Microservice server
+ * @param baseURI {string} additional part of the path (if any)
+ * @return {WmClient} the client object to use for accessing WM server
+ */
+async function create(scheme, host, port, baseURI) {
+    let sc = scheme
+    if (scheme.length > 0) {
+        sc = scheme
+        if (!sc.startsWith('http') && !sc.startsWith('https')){
+            throw new Error(`Unknown protocol ${sc}`)
         }
-    };
-};
 
-checkData = function (jsonInfoData) {
+
+        if (!endsWith(sc, ":")) {
+            sc += ":"
+        }
+    } else {
+        sc = 'http:'
+    }
+
+    const client = new WmClient(sc, host, port, baseURI);
+    let info = await client.getInfo()
+    client.importantHeaders = info.importantHeaders
+    client.staticCaps = info.staticCaps
+    client.virtualCaps = info.virtualCaps
+    client.staticCaps.sort()
+    client.virtualCaps.sort()
+    return client
+}
+
+checkData = (jsonInfoData) => {
     return jsonInfoData.wmVersion.length > 0 &&
         jsonInfoData.wurflAPIVersion.length > 0 &&
         jsonInfoData.wurflInfo.length > 0 &&
         jsonInfoData.staticCaps.length > 0;
-};
+}
 
 /**
- * setRequestedCapabilities - set the given capability names to the set they belong
- * @param caps
+ * setRequestedCapabilities - set the given capability names to that the client requires to the WM server
+ * @param caps {array} list of capabilities that you want to select from the ones exposed by the server
+ * @return {void} Nothing
  */
 WmClient.prototype.setRequestedCapabilities = function (caps) {
 
-    if(isUndefined(caps) || caps === null){
-        this.reqStaticCaps = null;
-        this.reqVCaps = null;
-        this.clearCaches();
+    if (isUndefinedOrNull(caps) || caps === null) {
+        this.reqStaticCaps = null
+        this.reqVCaps = null
+        this.clearCaches()
         return;
     }
 
-    var capNames = [];
-    var vcapNames = [];
+    let capNames = []
+    let vcapNames = []
 
-    for (var i=0; i< caps.length; i++)
-    {
-        var name = caps[i];
-        if (this.hasStaticCapability(name))
-        {
-            capNames.push(name);
-        }
-        else if (this.hasVirtualCapability(name))
-        {
-            vcapNames.push(name);
+    for (let i = 0; i < caps.length; i++) {
+        let name = caps[i]
+        if (this.hasStaticCapability(name)) {
+            capNames.push(name)
+        } else if (this.hasVirtualCapability(name)) {
+            vcapNames.push(name)
         }
     }
-    this.reqStaticCaps = capNames;
-    this.reqVCaps = vcapNames;
-};
+    this.reqStaticCaps = capNames
+    this.reqVCaps = vcapNames
+}
 
 /**
- * setRequestedStaticCapabilities - set list of static capabilities to return
- * @param stCaps
+ * setRequestedStaticCapabilities - set the given static capability names to that the client requires to the WM server
+ * @param stCaps {array} list of static capabilities that you want to select from the ones exposed by the server.
+ * Non static or non existing capabilities will be ignored.
+ * @return {void} Nothing
  */
+
 WmClient.prototype.setRequestedStaticCapabilities = function (stCaps) {
 
-    if(isUndefined(stCaps) || stCaps === null){
-        this.reqStaticCaps = null;
-        this.clearCaches();
-        return;
+    if (isUndefinedOrNull(stCaps) || stCaps === null) {
+        this.reqStaticCaps = null
+        this.clearCaches()
+        return
     }
 
-    var capNames = [];
+    let capNames = [];
 
-    for (var i=0; i< stCaps.length; i++)
-    {
-        var name = stCaps[i];
-        if (this.hasStaticCapability(name))
-        {
-            capNames.push(name);
+    for (let i = 0; i < stCaps.length; i++) {
+        let name = stCaps[i]
+        if (this.hasStaticCapability(name)) {
+            capNames.push(name)
         }
     }
-    this.reqStaticCaps = capNames;
-};
+    this.reqStaticCaps = capNames
+}
 
 /**
- * setRequestedVirtualCapabilities - set list of virtual capabilities to return
- * @param stCaps
+ * setRequestedVirtualCapabilities - set the given virtual capability names to that the client requires to the WM server
+ * @param vCaps {array} list of virtual capabilities that you want to select from the ones exposed by the server.
+ * Non virtual or non existing capabilities will be ignored.
+ * @return {void} Nothing
  */
 WmClient.prototype.setRequestedVirtualCapabilities = function (vCaps) {
 
-    if(isUndefined(vCaps) || vCaps === null){
-        this.reqVCaps = null;
-        this.clearCaches();
+    if (isUndefinedOrNull(vCaps) || vCaps === null) {
+        this.reqVCaps = null
+        this.clearCaches()
         return;
     }
 
-    var vcapNames = [];
+    let vcapNames = []
 
-    for (var i=0; i< vCaps.length; i++)
-    {
-        var name = vCaps[i];
-        if (this.hasVirtualCapability(name))
-        {
-            vcapNames.push(name);
+    for (let i = 0; i < vCaps.length; i++) {
+        let name = vCaps[i]
+        if (this.hasVirtualCapability(name)) {
+            vcapNames.push(name)
         }
     }
-    this.reqVCaps = vcapNames;
-};
+    this.reqVCaps = vcapNames
+}
 
 /**
  * lookupRequest - detects a device and returns its data in JSON format
- * @param nodeReq
- * @param cb callback function that will be executed with the resulting JSONDeviceData structure
- * @returns {JSONDeviceData}
+ * @param nodeReq {http.ClientRequest} an HTTP request structure
+ * @return {JSONDeviceData} a structure with the device information and capabilities
  */
-WmClient.prototype.lookupRequest = function (nodeReq, cb) {
+WmClient.prototype.lookupRequest = async function (nodeReq) {
     // copy headers
-    var lookupHeaders = {};
-    for (var i = 0; i < this.importantHeaders.length; i++) {
-        var name = this.importantHeaders[i];
-        var h = nodeReq.headers[name.toLowerCase()];
-        if (!isUndefined(h) && h.length > 0) {
-            lookupHeaders[name] = h;
+    let lookupHeaders = {};
+    for (let i = 0; i < this.importantHeaders.length; i++) {
+        let name = this.importantHeaders[i]
+        let h = nodeReq.headers[name.toLowerCase()]
+        if (!isUndefinedOrNull(h) && h.length > 0) {
+            lookupHeaders[name] = h
         }
     }
-    var wmReq = new model.Request(lookupHeaders, this.reqStaticCaps, this.reqVCaps);
-    var options = this.getOptions('/v2/lookuprequest/json', 'POST');
-    this.genericRequest(options, wmReq, parseDevice, cb, "ua-cache", this);
-};
+    let wmReq = new model.Request(lookupHeaders, this.reqStaticCaps, this.reqVCaps);
+    return await this.genericRequest('POST', '/v2/lookuprequest/json', wmReq, parseDevice, CACHE_TYPE_HEADERS)
+}
 
 /**
  * hasStaticCapability - returns true if the given capName exist in this client' static capability set, false otherwise
- * @param capName
- * @returns {boolean}
+ * @param capName {string} static capability name
+ * @return {boolean}
  */
-WmClient.prototype.hasStaticCapability = function(capName){
-
-    return this.staticCaps.indexOf(capName)!==-1;
+WmClient.prototype.hasStaticCapability = function (capName) {
+    return this.staticCaps.indexOf(capName) !== -1
 };
 
 /**
  * hasVirtualCapability - returns true if the given capName exist in this client' virtual capability set, false otherwise
- * @param vcapName
- * @returns {boolean}
+ * @param vcapName {string} the virtual capability name
+ * @return {boolean}
  */
-WmClient.prototype.hasVirtualCapability = function(vcapName){
-    return this.virtualCaps.indexOf(vcapName)!==-1;
+WmClient.prototype.hasVirtualCapability = function (vcapName) {
+    return this.virtualCaps.indexOf(vcapName) !== -1
 };
 
-WmClient.prototype.getCapabilityCount = function(device){
-    if(isUndefined(device) ||  (isUndefined(device.capabilities))){
+WmClient.prototype.getCapabilityCount = function (device) {
+    if (isUndefinedOrNull(device) || (isUndefinedOrNull(device.capabilities))) {
         return 0;
     }
-    return Object.keys(device.capabilities).length;
+    return Object.keys(device.capabilities).length
 };
 
 /**
  * getAllDeviceMakes returns identity data for all devices in WM server
- * @param cb callback that will be ccalled with the API call result
+ * @return {Array} the list of the device makers
  */
-WmClient.prototype.getAllDeviceMakes = function (cb) {
-    this.getDeviceMakesMap(function(deviceMakesMap) {
-        cb(Object.keys(deviceMakesMap))
+
+WmClient.prototype.getAllDeviceMakes = function () {
+
+    return new Promise((resolve) => {
+        let makeMapPromise = this.getDeviceMakesMap()
+        makeMapPromise.then(deviceMakes => {
+            deviceMakes = Object.keys(deviceMakes)
+            resolve(deviceMakes)
+        })
     })
-};
+}
 
 
 /**
  * getAllDevicesForMake Returns an array of an aggregate containing model_names + marketing_names for the given Make.
- * @param make
- * @param cb callback called on the API result
+ * @param make {string} name of a device maker (eg: 'Apple')
+ * @return {Array} An aggregate containing model_names + marketing_names for the given Make
  */
-WmClient.prototype.getAllDevicesForMake = function (make, cb) {
-    this.getDeviceMakesMap(function(deviceMakesMap) {
-        var ob = deviceMakesMap[make];
-        if (isUndefined(ob)) {
-            return cb(new Error('WM server error : ' + make + ' does not exist'));
-        }
-        cb(undefined, ob)
-    })
-};
-
-WmClient.prototype.getDeviceMakesMap = function (cb) {
-    var client = this;
-    var options = client.getOptions('/v2/alldevices/json', 'GET');
+WmClient.prototype.getAllDevicesForMake = async function (make) {
+    let client = this
+    let deviceMakesMap = await client.getDeviceMakesMap()
+    let ob = deviceMakesMap[make]
+    if (isUndefinedOrNull(ob)) {
+        throw new Error('WM server error : ' + make + ' does not exist')
+    }
+    return ob
+}
+// For internal use only
+WmClient.prototype.getDeviceMakesMap = async function () {
+    let client = this;
 
     // Check if we have a value for deviceMakesMap
-    if (!isUndefined(client.deviceMakesMap) && client.deviceMakesMap.length > 0) {
+    if (!isUndefinedOrNull(client.deviceMakesMap) && client.deviceMakesMap.length > 0) {
         // This returns a deep copy of make model, so that any changes to it are not reflected into our cached value
-        return cb(JSON.parse(JSON.stringify(client.deviceMakesMap)))
+        return JSON.parse(JSON.stringify(client.deviceMakesMap))
     }
 
-    var req = http.request(options, function (res) {
-        var body = '';
-        res.on('data', function (chunk) {
-            body += chunk;
-        });
+    let fullUrl = client.createFullUrl('/v2/alldevices/json')
+    let allDevices = (await axios.get(fullUrl)).data
 
-        res.on('end', function () {
-            var data = JSON.parse(body);
-            var deviceMakesMap = {};
-            for (var i = 0; i < data.length; i++) {
-                var bn = data[i].brand_name;
-                if (isUndefined(bn) || bn === null || bn === "") {
-                    continue;
-                }
+    let deviceMakesMap = {}
+    for (let i = 0; i < allDevices.length; i++) {
+        let bn = allDevices[i].brand_name
+        if (isUndefinedOrNull(bn) || bn === null || bn === "") {
+            continue;
+        }
 
-                var modelMktName = new model.JSONModelMktName(
-                    data[i].model_name,
-                    data[i].marketing_name);
-                if (isUndefined(deviceMakesMap[data[i].brand_name])) {
-                    deviceMakesMap[data[i].brand_name] = [];
-                }
-                deviceMakesMap[data[i].brand_name].push(modelMktName);
-            }
-
-            client.deviceMakesMap = JSON.parse(JSON.stringify(deviceMakesMap));
-
-            return cb(deviceMakesMap);
-        });
-    });
-    req.on('error', function (e) {
-        return resultCb(e, null)
-    });
-
-    req.end();
-};
+        let modelMktName = new model.JSONModelMktName(allDevices[i].model_name, allDevices[i].marketing_name)
+        if (isUndefinedOrNull(deviceMakesMap[allDevices[i].brand_name])) {
+            deviceMakesMap[allDevices[i].brand_name] = [];
+        }
+        deviceMakesMap[allDevices[i].brand_name].push(modelMktName)
+    }
+    client.deviceMakesMap = JSON.parse(JSON.stringify(deviceMakesMap))
+    return deviceMakesMap
+}
 
 /**
  * getAllOSes returns of all devices device_os capabilities
- * @param cb
- * @returns []
+ * @return {Array} list of device OSes
  */
-WmClient.prototype.getAllOSes = function (cb) {
-    this.getDeviceOsVerMap(function(deviceOsVerMap) {
-        return cb(Object.keys(deviceOsVerMap))
-    })
-};
-
+WmClient.prototype.getAllOSes = async function () {
+    let devOsVerMap = await this.getDeviceOsVerMap()
+    return Object.keys(devOsVerMap)
+}
 
 /**
  * getAllVersionsForOS Returns an array of all devices device_os_version for a given device_os cap.
- * @param device_os
- * @param {function(Error, {[]string}} cb called when done
+ * @param {string} device_os device OS name for which you want to get the list of versions
  */
-WmClient.prototype.getAllVersionsForOS = function (device_os, cb) {
-    this.getDeviceOsVerMap(function(deviceOsVerMap) {
-        var ob = deviceOsVerMap[device_os];
-        if (isUndefined(ob)) {
-            return cb(new Error('WM server error : ' + device_os + ' does not exist'));
-        }
-        // Filter function strips all empty elements
-        ob = ob.filter(function(element) {
-            return element !== "";
-        });
-        return cb(undefined, ob);
-    });
-};
+WmClient.prototype.getAllVersionsForOS = async function (device_os) {
+    let devOsVerMap = await this.getDeviceOsVerMap()
 
-WmClient.prototype.getDeviceOsVerMap = function (cb) {
-    var client = this;
-    var options = client.getOptions('/v2/alldeviceosversions/json', 'GET');
+    let ob = devOsVerMap[device_os]
+    if (isUndefinedOrNull(ob)) {
+        throw new Error('WM server error : ' + device_os + ' does not exist')
+    }
+    // Filter function strips all empty elements
+    ob = ob.filter(function (element) {
+        return element !== ''
+    })
+    return ob
+}
 
+// for internal use only
+WmClient.prototype.getDeviceOsVerMap = async function () {
+
+    let client = this
     // Check if we have a value for deviceMakesMap
-    if (!isUndefined(client.deviceOsVerMap) && client.deviceOsVerMap.length > 0) {
+    if (!isUndefinedOrNull(client.deviceOsVerMap) && client.deviceOsVerMap.length > 0) {
         // This returns a deep copy of make model, so that any changes to it are not reflected into our cached value
-        return cb(JSON.parse(JSON.stringify(client.deviceOsVerMap)))
+        return JSON.parse(JSON.stringify(client.deviceOsVerMap))
     }
 
-    var req = http.request(options, function (res) {
-        var body = '';
-        res.on('data', function (chunk) {
-            body += chunk;
-        });
+    let fullUrl = client.createFullUrl('/v2/alldeviceosversions/json')
+    const allDevices = (await axios.get(fullUrl)).data
+    let deviceOsVerMap = {};
+    for (let i = 0; i < allDevices.length; i++) {
+        let os = allDevices[i].device_os
+        if (isUndefinedOrNull(os) || os === null || os === "") {
+            continue
+        }
+        if (isUndefinedOrNull(deviceOsVerMap[os])) {
+            deviceOsVerMap[os] = []
+        }
+        deviceOsVerMap[os].push(allDevices[i].device_os_version)
+    }
 
-        res.on('end', function () {
-            var data = JSON.parse(body);
-            var deviceOsVerMap = {};
-            for (var i = 0; i < data.length; i++) {
-                var os = data[i].device_os;
-                if (isUndefined(os) || os === null || os === "") {
-                    continue;
-                }
-                if (isUndefined(deviceOsVerMap[os])) {
-                    deviceOsVerMap[os] = [];
-                }
-                deviceOsVerMap[os].push(data[i].device_os_version);
-            }
+    client.deviceOsVerMap = JSON.parse(JSON.stringify(deviceOsVerMap))
+    return deviceOsVerMap
+}
 
-            client.deviceOsVerMap = JSON.parse(JSON.stringify(deviceOsVerMap));
-            return cb(deviceOsVerMap);
-        });
-    });
-    req.on('error', function (e) {
-        return resultCb(e, null)
-    });
+// for internal use only
+WmClient.prototype.genericRequest = async function (method, path, reqData, parseCb, cacheType) {
 
-    req.end();
-};
-
-WmClient.prototype.genericRequest = function (options, reqData, parseCb, resultCb, cacheType, client) {
-
-    var device = undefined;
+    let device = null
+    let cacheKey = null
     // If the caller function uses a cache, try a cache lookup
-    if(!isUndefined(cacheType)) {
-        var cacheKey = this.getUserAgentCacheKey(reqData.lookup_headers);
-        if (cacheType === 'ua-cache' && !isUndefined(this.uaCache)) {
-            device = this.uaCache.get(cacheKey);
-        } else if (cacheType === 'dId-cache' && !isUndefined(this.devIdCache)) {
-            cacheKey = reqData.wurfl_id;
-            device = this.devIdCache.get(reqData.wurfl_id);
+    if (!isUndefinedOrNull(cacheType)) {
+        cacheKey = this.getUserAgentCacheKey(reqData.lookup_headers)
+        if (cacheType === CACHE_TYPE_HEADERS && !isUndefinedOrNull(this.uaCache)) {
+            device = this.uaCache.get(cacheKey)
+        } else if (cacheType === CACHE_TYPE_DEVICE_ID && !isUndefinedOrNull(this.devIdCache)) {
+            cacheKey = reqData.wurfl_id
+            device = this.devIdCache.get(reqData.wurfl_id)
         }
 
         // cache has found a matching device, pass it to callback
-        if (!isUndefined(device)) {
-            return resultCb(device);
+        if (device != null && !isUndefinedOrNull(device)) {
+            return device
         }
     }
-
-    // No device found in cache, let's try a server lookup
-    var reqBody = '';
-    if(!isUndefined(reqData)){
-        reqBody = JSON.stringify(reqData);
+    let result
+    if (method === 'GET') {
+        let getResponse = await axios.get(this.createFullUrl(path))
+        result = parseCb(getResponse.data)
+        this.addToCache(cacheType, cacheKey, result)
+    } else if (method === 'POST') {
+        let postResponse = await axios.post(this.createFullUrl(path), reqData)
+        result = parseCb(postResponse.data)
+        this.addToCache(cacheType, cacheKey, result)
     }
-
-    var req = http.request(options, function (res) {
-        var body = '';
-
-        res.on('data', function (chunk) {
-            body += chunk;
-        });
-
-        res.on('end', function () {
-            var result = parseCb(body);
-            if(!isUndefined(result.error) && result.error.length > 0){
-                return resultCb(undefined, new Error('WM server error :' + result.error));
-            }
-
-            if(!isUndefined(client)) {
-                client.addToCache(cacheType, cacheKey, result);
-            }
-            return resultCb(result);
-        });
-
-    });
-    req.on('error', function (e) {
-        return resultCb(undefined,e);
-    });
-
-    if(reqBody.length > 0){
-        req.write(reqBody);
-    }
-
-    req.end();
-};
+    return result
+}
 
 /**
- * getApiVersion, returns the API version
- * @returns {string}
+ * getApiVersion, returns the client API version
+ * @return {string} this client API version
  */
-WmClient.prototype.getApiVersion = function () { return "2.1.0"; };
+WmClient.prototype.getApiVersion = () => {
+    return '3.0.0'
+}
 
+/**
+ * Clears the client caches
+ */
 WmClient.prototype.clearCaches = function () {
-    if (!isUndefined(this.uaCache)) {
-        this.uaCache.reset();
+    if (!isUndefinedOrNull(this.uaCache)) {
+        this.uaCache.reset()
     }
 
-    if (!isUndefined(this.devIdCache)){
-            this.devIdCache.reset();
+    if (!isUndefinedOrNull(this.devIdCache)) {
+        this.devIdCache.reset()
     }
 
-    this.deviceMakesMap = {};
-    this.deviceOsVerMap = {};
+    this.deviceMakesMap = {}
+    this.deviceOsVerMap = {}
 };
 
-WmClient.prototype.safePut = function(cacheType, ckey, cvalue){
-    if(cacheType == 'ua-cache' && !isUndefined(this.uaCache)) {
-        this.uaCache.set(ckey, cvalue);
+WmClient.prototype.safePut = function (cacheType, ckey, cvalue) {
+    if (cacheType === CACHE_TYPE_HEADERS && !isUndefinedOrNull(this.uaCache)) {
+        this.uaCache.set(ckey, cvalue)
         return;
     }
 
-    if(cacheType == 'dId-cache' && !isUndefined(this.devIdCache)) {
-        this.devIdCache.set(ckey, cvalue);
-
+    if (cacheType === CACHE_TYPE_DEVICE_ID && !isUndefinedOrNull(this.devIdCache)) {
+        this.devIdCache.set(ckey, cvalue)
     }
 };
 
 /**
  * setCacheSize : set UA cache size
- * @param uaMaxEntries
+ * @param uaMaxEntries {int} max size of the cache
  */
 WmClient.prototype.setCacheSize = function (uaMaxEntries) {
-            this.uaCache = LRU(uaMaxEntries);
-            this.devIdCache = LRU(20000); // Device ID uses a fixed size
-};
+    this.uaCache = LRU(uaMaxEntries)
+    this.devIdCache = LRU(20000) // Device ID uses a fixed size
+}
 
-function parseInfo(body) {
-    var data = JSON.parse(body);
-    var static_caps = data.static_caps === null ? [] : data.static_caps;
-    var virtual_caps = data.virtual_caps === null ? [] : data.virtual_caps;
-    var info = new model.JSONInfoData(
+// internal use only
+function parseInfo(data) {
+    let static_caps = data.static_caps === null ? [] : data.static_caps
+    let virtual_caps = data.virtual_caps === null ? [] : data.virtual_caps
+    let info = new model.JSONInfoData(
         data.wurfl_api_version,
         data.wurfl_info,
         data.wm_version,
         data.important_headers,
         static_caps,
         virtual_caps,
-        data.ltime);
-        if (!checkData(info)){
-            throw Error("server returned invalid or empty data")
-        }
+        data.ltime)
+    if (!checkData(info)) {
+        throw Error("server returned invalid or empty data")
+    }
     return info;
 }
 
-function parseDevice(body) {
+// internal use only
+function parseDevice(data) {
 
-    var data = JSON.parse(body);
-    var device = new model.JSONDeviceData(
+    return new model.JSONDeviceData(
         data.apiVersion,
         data.capabilities,
         data.error,
         data.mtime,
-        data.ltime);
-    return device;
+        data.ltime)
 }
 
-function endsWith(text, needle){
-
-        return text.indexOf(needle, text.length - needle.length) !== -1;
+function endsWith(text, needle) {
+    return text.indexOf(needle, text.length - needle.length) !== -1;
 }
 
-function isUndefined(value) {
-    return typeof value === "undefined"
+/**
+ *
+ * @param value {object} any object
+ * @return {boolean} true if the object is undefined or null, false otherwise
+ */
+function isUndefinedOrNull(value) {
+    return (typeof value === "undefined" || value == null)
 }
 
 WmClient.prototype.getUserAgentCacheKey = function (headers) {
-    var cacheKey = '';
-    var hname = ''
-    for (let i = 0; i <this.importantHeaders.length; i++){
-        hname = this.importantHeaders[i]
-        var hval = headers[hname];
-        if(!isUndefined(hval)){
-            cacheKey += hval;
+    let cacheKey = ''
+    let h_name = ''
+    for (let i = 0; i < this.importantHeaders.length; i++) {
+        h_name = this.importantHeaders[i]
+        let h_val = headers[h_name]
+        if (!isUndefinedOrNull(h_val)) {
+            cacheKey += h_val
         }
     }
-    return cacheKey;
-};
+    return cacheKey
+}
 
+// internal use only: invokes clear cache only if the given timestamp (as int number) is different from the one stored in the client
 WmClient.prototype.clearCachesIfNeeded = function (ltime) {
-    if (!isUndefined(ltime) && ltime !== this.ltime) {
-        this.clearCaches();
-        this.ltime = ltime;
-    }
-};
-
-WmClient.prototype.addToCache = function(cacheType, cacheKey, result) {
-    // Clear cache if last load time of wurfl.xml on server has changed
-    this.clearCachesIfNeeded(result.ltime);
-    if(cacheType === 'ua-cache'){
-        this.safePut(cacheType, cacheKey, result);
-    }
-    else if (cacheType === 'dId-cache'){
-        this.safePut(cacheType, result.capabilities['wurfl_id'], result);
+    if (!isUndefinedOrNull(ltime) && ltime !== this.ltime) {
+        this.clearCaches()
+        this.ltime = ltime
     }
 }
 
 /**
- * SetHTTPTimeout sets the connection and transfer timeouts for this client in seconds.
- * This function should be called before performing any connection to WM server
- * @param timeout
+ * Adds an element to cache
+ * @param cacheType {string} the cache type. If different from CACHE_TYPE_HEADERS or CACHE_TYPE_DEVICE_ID it is ignored
+ * @param cacheKey {string} cache key
+ * @param result {void} Nothing
+ */
+WmClient.prototype.addToCache = function (cacheType, cacheKey, result) {
+    // Clear cache if last load time of wurfl.xml on server has changed
+    this.clearCachesIfNeeded(result.ltime)
+    if (cacheType === CACHE_TYPE_HEADERS) {
+        this.safePut(cacheType, cacheKey, result)
+    } else if (cacheType === CACHE_TYPE_DEVICE_ID) {
+        this.safePut(cacheType, result.capabilities['wurfl_id'], result)
+    }
+}
+
+/**
+ * SetHTTPTimeout sets the connection and transfer timeouts for this client in milliseconds.
+ * This function does not allow values under 10000 milliseconds.
+ * @param timeout {int} timeout in milliseconds
  */
 WmClient.prototype.setHTTPTimeout = function (timeout) {
-    if(!isUndefined(timeout) && timeout >= 10000) {
-        this.httpTimeout = timeout;
+    if (!isUndefinedOrNull(timeout) && timeout >= 10000) {
+        this.httpTimeout = timeout
+        axios.defaults.timeout = timeout
     }
-};
+}
 
 module.exports.create = create;

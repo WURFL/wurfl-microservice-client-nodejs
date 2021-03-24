@@ -23,13 +23,13 @@
 
 /**
  * JSONInfoData - server and API informations
- * @param wurflAPIVersion
- * @param wurflInfo
- * @param wmVersion
- * @param importantHeaders
- * @param staticCaps
- * @param virtualCaps
- * @param ltime
+ * @param wurflAPIVersion {string} the server API version
+ * @param wurflInfo {string} WM server info string
+ * @param wmVersion {string}
+ * @param importantHeaders {Array} list of headers names that server sends to client in order to instruct it on which one send in its requests
+ * @param staticCaps {Array} list of static capabilities exposed by the WM server
+ * @param virtualCaps {Array} list of virtual capabilities exposed by the WM server
+ * @param ltime {string} date time of last WM server data update
  * @constructor
  */
 function JSONInfoData (wurflAPIVersion, wurflInfo, wmVersion, importantHeaders, staticCaps, virtualCaps, ltime) {
@@ -42,20 +42,28 @@ function JSONInfoData (wurflAPIVersion, wurflInfo, wmVersion, importantHeaders, 
     this.ltime = ltime;
 }
 
-function Request(lookupHeaders, requestedCaps, requestedVCaps, wurflID, tacCode) {
+/**
+ * This object is used as request payload in all API calls that need it
+ * @param lookupHeaders {Object} key/value headers map (at least the User-Agent is mandatory)
+ * @param requestedCaps {Array} static capabilities that the server should return
+ * @param requestedVCaps {Array} virtual capabilities that the server should return
+ * @param wurflID {string} the WURFL device ID (optional)
+ * @constructor
+ */
+function Request(lookupHeaders, requestedCaps, requestedVCaps, wurflID) {
           this.lookup_headers = lookupHeaders;
           this.requested_caps = requestedCaps;
           this.requested_vCaps = requestedVCaps;
           this.wurfl_id = wurflID;
-          this.tac_code = tacCode;
 }
 
 /**
  * JSONDeviceData models a WURFL device data in JSON format
- * @param capabilities
- * @param error
- * @param mtime
- * @param ltime
+ * @param wmAPIVersion {string} server API version
+ * @param capabilities {Object} a key/value map of device capabilities
+ * @param error {string} error message of any error occurred during detection
+ * @param mtime {int} timestamp of detection object creation time
+ * @param ltime {string} date time of last data update from WM server
  * @constructor
  */
 function JSONDeviceData(wmAPIVersion, capabilities, error, mtime, ltime) {
@@ -68,9 +76,9 @@ function JSONDeviceData(wmAPIVersion, capabilities, error, mtime, ltime) {
 
 /**
  * JSONMakeModel models simple device "identity" data in JSON format
- * @param brandName
- * @param modelName
- * @param marketingName
+ * @param brandName {string} device brand name (eg: samsung)
+ * @param modelName {string} device model name (eg: SM-951)
+ * @param marketingName {string} device marketing name, if any (eg: Samsung Galaxy S21)
  * @constructor
  */
 function JSONMakeModel(brandName, modelName, marketingName) {
@@ -81,8 +89,8 @@ function JSONMakeModel(brandName, modelName, marketingName) {
 
 /**
  * JSONModelMktName holds model_name and marketing_name data in JSON format
- * @param modelName
- * @param marketingName
+ * @param modelName {string} device model name (eg: SM-951)
+ * @param marketingName {string} device marketing name, if any (eg: Samsung Galaxy S21)
  * @constructor
  */
 function JSONModelMktName(modelName, marketingName) {
