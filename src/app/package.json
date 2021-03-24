@@ -3,7 +3,8 @@
   "jest": {
     "verbose": true,
     "cacheDirectory": "./node_modules/.cache/jest",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "testResultsProcessor": "jest-teamcity-reporter"
   },
   "description": "WURFL by ScientiaMobile. WURFL Microservice Client",
   "version": "3.0.0",
@@ -20,9 +21,9 @@
     "client"
   ],
   "dependencies": {
+    "axios": "^0.21.1",
     "lru-cache": "4.1.1",
-    "unirest": "0.6.0",
-    "axios": "^0.21.1"
+    "unirest": "0.6.0"
   },
   "bugs": {
     "url": "null"
@@ -33,8 +34,8 @@
   "devDependencies": {
     "chai": "^4.3.4",
     "jest": "^25.0.0",
+    "jest-teamcity-reporter": "^0.9.0",
     "jsdoc": "^3.6.6",
-    "mocha": "^6.2.3",
-    "mocha-teamcity-reporter": "^1.1.1"
+    "mocha": "^6.2.3"
   }
 }
