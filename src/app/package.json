@@ -6,7 +6,7 @@
     "testEnvironment": "node"
   },
   "description": "WURFL by ScientiaMobile. WURFL Microservice Client",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "license": "Apache-2.0",
   "main": "./wmclient.js",
   "repository": "https://github.com/WURFL/wurfl-microservice-client-nodejs",
