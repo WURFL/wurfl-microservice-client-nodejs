@@ -1,6 +1,6 @@
 3.0.0
 ------------------------------------
-- Complete rewrite of all API using async/await. Not compatible with older versions
+- Complete rewrite of all API using async/await. NOT compatible with older versions
 
 2.1.0
 ------------------------------------

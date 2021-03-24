@@ -13,7 +13,32 @@ This is the Node.js Client API for accessing the WURFL Microservice. The API is 
 
 - WURFL Microservice for Google Cloud Platform: https://www.scientiamobile.com/products/wurfl-microservice-for-gcp/
 
-Example api use looking up a single UserAgent :
+## Version 3.0.0: rewritten from the ground up!
+
+Version 3.0.0 has been completely rewritten to replace callbacks with async/await approach. Every client API function remains the same, except
+for the provided callback function, that is no longer accepted.
+
+As a consequence, **applications written using WM client versions prior to 3.0.0, in order to use the new version, will have to be modified to use async/await** or handle promises 
+(see paragraph 'Using promises')
+
+For example, in versions before 3.0.0 you could get the WM server info doing:
+
+```javascript
+client.getInfo(function (info, error) {
+    // do something...
+}
+```
+
+from version 3.0.0 on, you will have to do
+
+```javascript
+let info = await client.getInfo()
+// do something
+```
+
+## API usage
+
+Example api usage:
 
 ```javascript
 let wmclient = require('wmclient')
@@ -163,23 +188,19 @@ function compare(a, b) {
     return comparison
 }
 ```
-
-## Note on version 2.2.0
-
-Version 2.2.0 has been completely rewritten to replace callbacks with async/await approach. Every client API function remains the same, except
-for the provided callback function, that is no longer accepted.
-
-For example, in versions before 2.2.0 you could get the WM server info doing:
+### Using promises
+If you prefer using Promises over async/await approach, you can do it like this:
 
 ```javascript
-client.getInfo(function (info, error) {
-    // do something...
-}
-```
-
-from 2.2.0 on, you will have to do
-
-```javascript
-let info = await client.getInfo()
-// do something
+const wmclient = require('wmclient')
+const clientPromise = wmclient.create('http:', 'localhost','8080','')
+clientPromise.then((client) => {
+    let userAgent = 'Mozilla/5.0 (Linux; Android 10; GM1911 Build/QKQ1.190716.003; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/83.0.4103.106 Mobile Safari/537.36 Instagram 146.0.0.27.125 Android (29/10; 560dpi; 1440x3064; OnePlus; GM1911; OnePlus7Pro; qcom; en_US; 221134037)'
+    let device_promise = client.lookupUserAgent(userAgent)
+    device_promise.then((device) => {
+        console.log(`Detected device ${device.capabilities['brand_name']} ${device.capabilities['model_name']}`)
+    }).catch((error) => {
+        console.log('ERROR: ' + error.message)
+    })
+})
 ```
