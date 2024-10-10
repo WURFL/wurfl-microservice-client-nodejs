@@ -193,8 +193,7 @@ describe("Wm client", () => {
         expect(device.capabilities['brand_name']).toBe('Asus')
         expect(device.capabilities['is_robot']).toBe('false')
         expect(device.capabilities['model_name']).toBe('Z017D')
-        expect(device.capabilities['model_name']).toBe('Z017D')
-        expect(device.capabilities['device_name']).toBe('Asus Zenfone 3 ZE520KL')
+        expect(device.capabilities['form_factor']).toBe('Feature Phone')
         expect(client.getCapabilityCount(device)).toBe(5)
 
         // These caps have not been defined
@@ -248,7 +247,7 @@ describe("Wm client", () => {
         expect(device.capabilities['brand_name']).toBe('Asus')
         expect(device.capabilities['model_name']).toBe('Z017D')
         expect(device.capabilities['is_robot']).toBe('false')
-        expect(device.capabilities['device_name']).toBe('Asus Zenfone 3 ZE520KL')
+        expect(device.capabilities['form_factor']).toBe('Feature Phone')
         expect(device.APIVersion).toBeDefined()
         expect(device.mtime).toBeGreaterThan(0)
         // This capability is not included in the filter
