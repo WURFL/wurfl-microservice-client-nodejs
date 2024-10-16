@@ -150,6 +150,8 @@ checkData = (jsonInfoData) => {
  * setRequestedCapabilities - set the given capability names to that the client requires to the WM server
  * @param caps {array} list of capabilities that you want to select from the ones exposed by the server
  * @return {void} Nothing
+ *
+ * @deprecated This method is deprecated and will be removed in a future version.
  */
 WmClient.prototype.setRequestedCapabilities = function (caps) {
 
@@ -424,7 +426,7 @@ WmClient.prototype.genericRequest = async function (method, path, reqData, parse
  * @return {string} this client API version
  */
 WmClient.prototype.getApiVersion = () => {
-    return '3.0.0'
+    return '3.1.0'
 }
 
 /**
