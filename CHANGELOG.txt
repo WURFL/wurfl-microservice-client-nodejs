@@ -1,3 +1,7 @@
+3.1.0
+------------------------------------
+- Deprecated method setRequestedCapabilities()
+
 3.0.0
 ------------------------------------
 - Complete rewrite of all API using async/await. NOT compatible with older versions

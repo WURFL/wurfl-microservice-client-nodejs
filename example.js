@@ -14,8 +14,8 @@
    limitations under the License.
  */
 
-// this must be used when executing directly from source code downloaded from git repo
-//let wmclient = require('./src/app/wmclient')
+// Use the commented require to refer local source code instead of client installed from NPM repo
+// let wmclient = require('./src/app/wmclient')
 let wmclient = require('wmclient')
 const http = require("http")
 const TEXT_SEPARATOR = '---------------------------------------------------------------------------------'
@@ -36,6 +36,7 @@ const example = async () => {
     console.log('Static capabilities loaded: ' + client.staticCaps.length)
     console.log('Virtual capabilities loaded: ' + client.virtualCaps.length + '\n')
     separate()
+    // Get server info
     try {
         let info = await client.getInfo()
         console.log('Server info: \n')
@@ -46,7 +47,7 @@ const example = async () => {
         console.log("Unable to load WURFL Info")
     }
     separate()
-    // Perform a detection using passing a whole HTTP request to WM server API
+    // Perform a detection using a whole HTTP request to WM server API
     // When building a request object for node, headers must be lowercase, according to Node standard
     let req_headers = {
         'accept': 'text/html, application/xml;q=0.9, application/xhtml+xml, image/png, image/webp, image/jpeg, image/gif, image/x-xbitmap, */*;q=0.1',
@@ -64,6 +65,7 @@ const example = async () => {
         'x-operamini-phone-Ua': 'Mozilla/5.0 (Linux; Android 8.1.0; SM-J610G Build/M1AJQ; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/69.0.3497.100 Mobile Safari/537.36',
     }
 
+    // Request refer a local WM server. Change the host and port to your WM server if needed
     let options = {
         protocol: 'http:',
         host: 'localhost',
@@ -75,6 +77,8 @@ const example = async () => {
     let req = http.request(options)
     req.headers = req_headers
     req.end()
+
+    // Get device info using wmclient
     let device
     try {
         device = await client.lookupRequest(req)
@@ -96,7 +100,9 @@ const example = async () => {
         }
     }
     separate()
-    // Get all the device manufacturers, and print the first twenty
+    // Get some data using wmclient
+
+    // Get all the device manufacturers, and print the first twenty returned
     let deviceMakes = await client.getAllDeviceMakes()
     let limit = 20
     console.log("Print the first " + limit + " Brand of " + deviceMakes.length)
@@ -106,7 +112,7 @@ const example = async () => {
         console.log(" - " + deviceMakes[i])
     }
     separate()
-    // Now call the WM server to get all device model and marketing names produced by Apple
+    // Get all device model and marketing names produced by Apple
     let brandName = "Apple"
     try {
         let devsForMake = await client.getAllDevicesForMake(brandName)
@@ -124,7 +130,7 @@ const example = async () => {
         console.log(`Error looking for  models for device, brand ${error.message}`)
     }
     separate()
-    // Now call the WM server to get all operative system names
+    // Get all operative system names
     let oses = await client.getAllOSes()
     // Sort and print all OS names
     console.log("Print the list of OSes")
@@ -133,7 +139,7 @@ const example = async () => {
         console.log(" - " + oses[i])
     }
 
-    // Let's call the WM server to get all version of the Android OS
+    // Get all Android OS versions
     let os = 'Android'
     try {
         let versions = await client.getAllVersionsForOS(os)
