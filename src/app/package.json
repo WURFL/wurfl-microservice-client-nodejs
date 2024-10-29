@@ -7,10 +7,13 @@
     "testResultsProcessor": "jest-teamcity-reporter"
   },
   "description": "WURFL by ScientiaMobile. WURFL Microservice Client",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "license": "Apache-2.0",
   "main": "./wmclient.js",
-  "repository": "https://github.com/WURFL/wurfl-microservice-client-nodejs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WURFL/wurfl-microservice-client-nodejs.git"
+  },
   "author": {
     "name": "Andrea Castello, ScientiaMobile Inc.",
     "email": "support@scientiamobile.com"
