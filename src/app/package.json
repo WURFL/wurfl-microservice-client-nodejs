@@ -7,7 +7,7 @@
     "testResultsProcessor": "jest-teamcity-reporter"
   },
   "description": "WURFL by ScientiaMobile. WURFL Microservice Client",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "license": "Apache-2.0",
   "main": "./wmclient.js",
   "repository": {
@@ -24,7 +24,7 @@
     "client"
   ],
   "dependencies": {
-    "axios": "^0.21.1",
+    "axios": "^0.29.0",
     "lru-cache": "4.1.1",
     "unirest": "0.6.0"
   },
@@ -36,7 +36,7 @@
   },
   "devDependencies": {
     "chai": "^4.3.4",
-    "jest": "^25.0.0",
+    "jest": "^25.5.4",
     "jest-teamcity-reporter": "^0.9.0",
     "jsdoc": "^3.6.6",
     "mocha": "^6.2.3"
