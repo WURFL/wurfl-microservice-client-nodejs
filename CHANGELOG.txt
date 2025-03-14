@@ -1,4 +1,11 @@
+3.2.0 - Mar 14, 2025
+------------------------------------
+- Axios dependency upgraded to 0.29.0 to address Axios Cross-Site Request Forgery Vulnerability
+
 3.1.0 - Oct 29th, 2024
+------------------------------------
+- Deprecated method setRequestedCapabilities()
+
 ------------------------------------
 - Deprecated method setRequestedCapabilities()
 
