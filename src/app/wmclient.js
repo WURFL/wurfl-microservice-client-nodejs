@@ -426,7 +426,7 @@ WmClient.prototype.genericRequest = async function (method, path, reqData, parse
  * @return {string} this client API version
  */
 WmClient.prototype.getApiVersion = () => {
-    return '3.1.0'
+    return '3.2.0'
 }
 
 /**

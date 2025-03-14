@@ -7,7 +7,7 @@
     "testResultsProcessor": "jest-teamcity-reporter"
   },
   "description": "WURFL by ScientiaMobile. WURFL Microservice Client",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "license": "Apache-2.0",
   "main": "./wmclient.js",
   "repository": {
