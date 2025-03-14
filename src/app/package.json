@@ -24,7 +24,7 @@
     "client"
   ],
   "dependencies": {
-    "axios": "^0.21.1",
+    "axios": "^1.8.3",
     "lru-cache": "4.1.1",
     "unirest": "0.6.0"
   },
