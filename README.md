@@ -194,6 +194,24 @@ function compare(a, b) {
     return comparison
 }
 ```
+## Testing with Jest
+
+When running tests with Jest, axios v1 exposes an ES module entry that can cause Jest to throw "Unexpected token import" if it resolves the ESM build. To align Jest with Node’s CommonJS resolution, map axios to its Node CJS bundle in the Jest config:
+
+```json
+{
+  "jest": {
+    "moduleNameMapper": {
+      "^axios$": "axios/dist/node/axios.cjs"
+    }
+  }
+}
+```
+
+Notes:
+- This setting affects tests only; it does not change runtime behavior.
+- If axios changes internal paths in a future major release, update the mapping accordingly.
+
 ### Using promises
 If you prefer using Promises over async/await approach, you can do it like this:
 
