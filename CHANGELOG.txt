@@ -1,6 +1,10 @@
-3.2.1 - Sep 18, 2025
+3.2.2 - Sep 19, 2025
 ------------------------------------
 - Axios dependency upgraded to 1.12.2 to address Axios vulnerability to DoS attack through lack of data size check
+
+3.2.1 - Sep 18, 2025
+------------------------------------
+- Wrong deploy
 
 3.2.0 - Mar 14, 2025
 ------------------------------------
