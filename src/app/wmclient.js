@@ -17,7 +17,8 @@ const model = require('./model');
 const LRU = require('lru-cache');
 const CACHE_TYPE_HEADERS = 'ua-cache'
 const CACHE_TYPE_DEVICE_ID = 'dId-cache'
-const axios = require('axios').default
+// Axios main entry; Jest maps to CJS build via moduleNameMapper
+const axios = require('axios')
 
 
 /**
@@ -426,7 +427,7 @@ WmClient.prototype.genericRequest = async function (method, path, reqData, parse
  * @return {string} this client API version
  */
 WmClient.prototype.getApiVersion = () => {
-    return '3.2.0'
+    return '3.2.2'
 }
 
 /**

@@ -1,17 +1,17 @@
-ScientiaMobile WURFL Microservice Client for NODE.JS
+ScientiaMobile WURFL Microservice Client for Node.js
 ==============
 
 WURFL Microservice (by ScientiaMobile, Inc.) is a mobile device detection service that can quickly and accurately detect over 500 capabilities of visiting devices. It can differentiate between portable mobile devices, desktop devices, SmartTVs and any other types of devices that have a web browser.
 
 This is the Node.js Client API for accessing the WURFL Microservice. The API is released under Open-Source and can be integrated with other open-source or proprietary code. In order to operate, it requires access to a running instance of the WURFL Microservice product, such as:
 
-- WURFL Microservice for Docker: https://www.scientiamobile.com/products/wurfl-microservice-docker-detect-device/
+- [WURFL Microservice for Docker](https://www.scientiamobile.com/products/wurfl-microservice-docker-detect-device/)
 
-- WURFL Microservice for AWS: https://www.scientiamobile.com/products/wurfl-device-detection-microservice-aws/ 
+- [WURFL Microservice for AWS](https://www.scientiamobile.com/products/wurfl-device-detection-microservice-aws/)
 
-- WURFL Microservice for Azure: https://www.scientiamobile.com/products/wurfl-microservice-for-azure/
+- [WURFL Microservice for Azure](https://azuremarketplace.microsoft.com/en-us/marketplace/apps?search=WURFL%20Microservice&page=1)
 
-- WURFL Microservice for Google Cloud Platform: https://www.scientiamobile.com/products/wurfl-microservice-for-gcp/
+- [WURFL Microservice for Google Cloud Platform](https://console.cloud.google.com/marketplace/browse?filter=partner:ScientiaMobile%20Inc.&q=WURFL%20Microservice)
 
 ## Version 3.0.0: rewritten from the ground up!
 
@@ -194,6 +194,24 @@ function compare(a, b) {
     return comparison
 }
 ```
+## Testing with Jest
+
+When running tests with Jest, axios v1 exposes an ES module entry that can cause Jest to throw "Unexpected token import" if it resolves the ESM build. To align Jest with Node’s CommonJS resolution, map axios to its Node CJS bundle in the Jest config:
+
+```json
+{
+  "jest": {
+    "moduleNameMapper": {
+      "^axios$": "axios/dist/node/axios.cjs"
+    }
+  }
+}
+```
+
+Notes:
+- This setting affects tests only; it does not change runtime behavior.
+- If axios changes internal paths in a future major release, update the mapping accordingly.
+
 ### Using promises
 If you prefer using Promises over async/await approach, you can do it like this:
 

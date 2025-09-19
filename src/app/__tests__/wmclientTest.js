@@ -76,7 +76,7 @@ describe("Wm client", () => {
             await wmClient.create('', '', '', '')
         } catch (error) {
             exc = true
-            expect(error.message).toContain('ECONNREFUSED')
+            expect(error.message).toContain('Invalid URL')
         }
         expect(exc).toBeTruthy()
     })
