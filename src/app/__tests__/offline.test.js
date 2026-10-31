@@ -17,6 +17,8 @@ function resetStub() {
         bodies: [],
         fail: false,
         delayMs: 0,
+        // Send the headers and part of the body, then wait this long before the rest.
+        stallBodyMs: 0,
     }
 }
 
@@ -77,7 +79,13 @@ beforeAll(async () => {
                     return
                 }
                 res.writeHead(200, { 'Content-Type': 'application/json' })
-                res.end(JSON.stringify(route(body)))
+                const json = JSON.stringify(route(body))
+                if (stub.stallBodyMs > 0) {
+                    res.write(json.slice(0, 10))
+                    setTimeout(() => res.end(json.slice(10)), stub.stallBodyMs)
+                    return
+                }
+                res.end(json)
             }, stub.delayMs)
         })
     })
@@ -161,6 +169,15 @@ describe('errors and timeouts', () => {
         const client = await create()
         client.httpTimeout = 50
         stub.delayMs = 500
+        const error = await client.lookupUserAgent(UA).catch((e) => e)
+        expect(error.message).toBe('timeout of 50ms exceeded')
+        expect(error.code).toBe('ECONNABORTED')
+    })
+
+    test('a body that stalls after the headers times out the same way', async () => {
+        const client = await create()
+        client.httpTimeout = 50
+        stub.stallBodyMs = 500
         const error = await client.lookupUserAgent(UA).catch((e) => e)
         expect(error.message).toBe('timeout of 50ms exceeded')
         expect(error.code).toBe('ECONNABORTED')

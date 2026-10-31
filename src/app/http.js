@@ -39,11 +39,17 @@ async function request(method, url, body, timeout) {
         options.signal = AbortSignal.timeout(timeout)
     }
 
+    // The timeout covers the whole exchange, body included: a server can send the headers
+    // and then stall.
     let response
+    let text
     try {
         response = await fetch(target, options)
+        text = await response.text()
     } catch (error) {
-        if (error.name === 'TimeoutError') {
+        // Check the signal rather than the error: fetch rejects with a TimeoutError, but a
+        // body read cut short by it can report an AbortError or a network error instead.
+        if (options.signal && options.signal.aborted) {
             throw wrapError(`timeout of ${timeout}ms exceeded`, 'ECONNABORTED', error)
         }
         // fetch reports the system error (e.g. "connect ECONNREFUSED 127.0.0.1:8080") as its cause
@@ -56,7 +62,6 @@ async function request(method, url, body, timeout) {
         throw wrapError(message, cause.code, error)
     }
 
-    const text = await response.text()
     let data = text
     try {
         data = JSON.parse(text)
