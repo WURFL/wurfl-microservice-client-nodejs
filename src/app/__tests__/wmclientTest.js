@@ -13,22 +13,28 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-const wmClient = require('../wmclient')
-const http = require("http");
-const lookupRequestTestOpts = {
-    protocol: 'http:',
-    host: 'localhost',
-    port: '8080',
-    method: 'POST',
-    path: '/',
-}
-
 'use strict'
+const wmClient = require('../wmclient')
+
+// These tests need a running WURFL Microservice server: WM_URL (default http://localhost:8080).
+// test-setup.js checks it is reachable and sets WM_LIVE; otherwise the suite is skipped.
+const wmUrl = new URL(process.env.WM_URL || 'http://localhost:8080')
+const WM = {
+    scheme: wmUrl.protocol,
+    host: wmUrl.hostname,
+    port: wmUrl.port || (wmUrl.protocol === 'https:' ? '443' : '80'),
+    baseURI: wmUrl.pathname.replace(/^\/+|\/+$/g, ''),
+}
+const createLiveClient = () => wmClient.create(WM.scheme, WM.host, WM.port, WM.baseURI)
+// lookupRequest only reads the request's headers: Node lowercases their names
+const nodeRequest = (headers) => ({ headers })
+const describeLive = process.env.WM_LIVE === '1' ? describe : describe.skip
+
 let client;
-describe("Wm client", () => {
+describeLive("Wm client", () => {
     beforeAll(async () => {
         console.log('Running on node v ' + process.version)
-        client = await wmClient.create('http:', 'localhost', '8080', '')
+        client = await createLiveClient()
         expect(client !== undefined)
     })
 
@@ -36,7 +42,7 @@ describe("Wm client", () => {
         try {
 
 
-            let wm = await wmClient.create('http:', 'localhost', '8080', '')
+            let wm = await createLiveClient()
             expect(wm.importantHeaders.length).toBeGreaterThan(0)
             expect(wm.virtualCaps.length).toBeGreaterThan(0)
             expect(wm.staticCaps.length).toBeGreaterThan(0)
@@ -47,14 +53,16 @@ describe("Wm client", () => {
     })
 
     test('create client should work when schema is provided without the column', async () => {
-        let wm = await wmClient.create('http', 'localhost', '8080', '')
+        let wm = await wmClient.create(WM.scheme.replace(':', ''), WM.host, WM.port, WM.baseURI)
         expect(wm.importantHeaders.length).toBeGreaterThan(0)
         expect(wm.virtualCaps.length).toBeGreaterThan(0)
         expect(wm.staticCaps.length).toBeGreaterThan(0)
     });
 
-    test('create client should pass when schema is not passed, defaulting to http', async () => {
-        let wm = await wmClient.create('', 'localhost', '8080', '')
+    // The default scheme is http, so this needs a plain http server
+    const testHttpOnly = WM.scheme === 'http:' ? test : test.skip
+    testHttpOnly('create client should pass when schema is not passed, defaulting to http', async () => {
+        let wm = await wmClient.create('', WM.host, WM.port, WM.baseURI)
         expect(wm.importantHeaders.length).toBeGreaterThan(0)
         expect(wm.virtualCaps.length).toBeGreaterThan(0)
         expect(wm.staticCaps.length).toBeGreaterThan(0)
@@ -62,7 +70,7 @@ describe("Wm client", () => {
     test('client create should throw error when protocol is not supported', async () => {
         let exc = false
         try {
-            await wmClient.create('smtp', 'localhost', '8080', '')
+            await wmClient.create('smtp', WM.host, WM.port, WM.baseURI)
         } catch (error) {
             exc = true
             expect(error.message).toContain('Unknown protocol')
@@ -213,9 +221,7 @@ describe("Wm client", () => {
             'accept-encoding': 'gzip, deflate'
         }
 
-        let req = http.request(lookupRequestTestOpts)
-        req.headers = hs
-        req.end()
+        let req = nodeRequest(hs)
         let device = await client.lookupRequest(req)
         expect(device).toBeDefined()
         expect(client.getCapabilityCount(device)).toBeGreaterThan(0)
@@ -237,9 +243,7 @@ describe("Wm client", () => {
             'accept-encoding': 'gzip, deflate'
         }
 
-        let req = http.request(lookupRequestTestOpts)
-        req.headers = hs
-        req.end()
+        let req = nodeRequest(hs)
         let device = await client.lookupRequest(req)
         expect(device).toBeDefined()
         expect(client.getCapabilityCount(device)).toBeGreaterThan(0)
@@ -258,7 +262,11 @@ describe("Wm client", () => {
     })
     test('should return an error is server is not available', async () => {
 
-        client.port = 9090;
+        // A local port nothing listens on
+        const { scheme, host, port } = client
+        client.scheme = 'http:'
+        client.host = 'localhost'
+        client.port = '8089'
 
         // In order to emulate node js behaviour we must lowercase (see: https://nodejs.org/docs/latest-v0.10.x/api/http.html) "Keys are lowercased. Values are not modified"
         let hs = {
@@ -266,9 +274,7 @@ describe("Wm client", () => {
             'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36',
             'accept-encoding': 'gzip, deflate'
         }
-        let req = http.request(lookupRequestTestOpts)
-        req.headers = hs;
-        req.end();
+        let req = nodeRequest(hs)
         let exc = false
         let device
         try {
@@ -278,7 +284,7 @@ describe("Wm client", () => {
         }
         expect(device).toBeUndefined()
         expect(exc).toBeTruthy()
-        client.port = 8080;
+        Object.assign(client, { scheme, host, port })
     })
     test('setRequestedCapabilities assign each capability in the given array to the proper specific array of static or virtual capabilities', async () => {
         client.setRequestedCapabilities(["is_full_desktop", "marketing_name", "brand_name", "model_name", "form_factor", "is_robot", "is_tablet"]);
@@ -429,7 +435,7 @@ describe("Wm client", () => {
     })
     test('should show that cache usage is at least one order of magnitude faster than detection without cache',
         async () => {
-            let tclient = await wmClient.create('http:', 'localhost', '8080', '')
+            let tclient = await createLiveClient()
             let ua = 'Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36'
             let detectionCount = 10000
             let startTime = process.hrtime.bigint()
