@@ -194,23 +194,47 @@ function compare(a, b) {
     return comparison
 }
 ```
-## Testing with Jest
+## Requirements
 
-When running tests with Jest, axios v1 exposes an ES module entry that can cause Jest to throw "Unexpected token import" if it resolves the ESM build. To align Jest with Node’s CommonJS resolution, map axios to its Node CJS bundle in the Jest config:
+Version 3.3.0 has no runtime dependencies: HTTP calls use the built-in `fetch`, so it needs
+Node.js 18 or later (or Bun, or Deno). TypeScript types are included (`index.d.ts`).
 
-```json
-{
-  "jest": {
-    "moduleNameMapper": {
-      "^axios$": "axios/dist/node/axios.cjs"
-    }
-  }
-}
+## Detecting from a Fetch API Request (Bun, Deno, edge runtimes)
+
+`lookupRequest()` accepts a Node.js request (whose `headers` is an object with lowercase
+names) or a Fetch API `Request` (whose `headers` is a `Headers` object):
+
+```javascript
+const wmclient = require('wmclient')
+const client = await wmclient.create('https:', 'wm.example.com', '443', '')
+
+Bun.serve({
+    async fetch(request) {
+        const device = await client.lookupRequest(request)
+        return new Response(device.capabilities['complete_device_name'])
+    },
+})
 ```
 
-Notes:
-- This setting affects tests only; it does not change runtime behavior.
-- If axios changes internal paths in a future major release, update the mapping accordingly.
+## Errors and timeouts
+
+Requests time out after 10 seconds; change it with `setHTTPTimeout(ms)` (10000 or more).
+A failed request rejects with an `Error`: `error.message` reads like
+`Request failed with status code 500` or `connect ECONNREFUSED 127.0.0.1:8080`, and for an
+HTTP error status `error.response` holds `status`, `statusText` and `data`.
+
+## Running the tests
+
+```bash
+cd src/app
+npm install
+npm test                                              # offline tests, plus the live ones if a server answers at http://localhost:8080
+WM_URL=https://wm.example.com npm test                # live tests against that server (fails if it doesn't answer)
+```
+
+`__tests__/offline.test.js` runs against a stub server. `__tests__/wmclientTest.js` needs a
+running WURFL Microservice: `WM_URL` (default `http://localhost:8080`) selects it, and
+without `WM_URL` it is skipped when nothing answers at the default.
 
 ### Using promises
 If you prefer using Promises over async/await approach, you can do it like this:

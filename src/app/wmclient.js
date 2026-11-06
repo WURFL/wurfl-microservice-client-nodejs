@@ -13,12 +13,12 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
+'use strict'
 const model = require('./model');
-const LRU = require('lru-cache');
+const LRU = require('./cache');
+const http = require('./http');
 const CACHE_TYPE_HEADERS = 'ua-cache'
 const CACHE_TYPE_DEVICE_ID = 'dId-cache'
-// Axios main entry; Jest maps to CJS build via moduleNameMapper
-const axios = require('axios')
 
 
 /**
@@ -68,11 +68,7 @@ WmClient.prototype.lookupDeviceID = async function (wurflId) {
 
     const lHeaders = {}
     let reqData = new model.Request(lHeaders, this.reqStaticCaps, this.reqVCaps, wurflId);
-    let device = await this.genericRequest('POST', '/v2/lookupdeviceid/json', reqData, parseDevice, CACHE_TYPE_DEVICE_ID);
-    if (!isUndefinedOrNull(device.error) && device.error.length > 0){
-        throw new Error(device.error)
-    }
-    return device
+    return this.genericRequest('POST', '/v2/lookupdeviceid/json', reqData, parseDevice, CACHE_TYPE_DEVICE_ID);
 }
 
 WmClient.prototype.createPath = function (path) {
@@ -100,8 +96,7 @@ WmClient.prototype.createFullUrl = function (path) {
 WmClient.prototype.getInfo = async function () {
 
     let full_url = this.createFullUrl('/v2/getinfo/json')
-    let info_response = await axios.get(full_url)
-    let info = parseInfo(info_response.data)
+    let info = parseInfo(await http.get(full_url, this.httpTimeout))
     this.clearCachesIfNeeded(info.ltime)
     return info
 }
@@ -140,7 +135,7 @@ async function create(scheme, host, port, baseURI) {
     return client
 }
 
-checkData = (jsonInfoData) => {
+const checkData = (jsonInfoData) => {
     return jsonInfoData.wmVersion.length > 0 &&
         jsonInfoData.wurflAPIVersion.length > 0 &&
         jsonInfoData.wurflInfo.length > 0 &&
@@ -176,6 +171,8 @@ WmClient.prototype.setRequestedCapabilities = function (caps) {
     }
     this.reqStaticCaps = capNames
     this.reqVCaps = vcapNames
+    // cached results hold the previous capability list
+    this.clearCaches()
 }
 
 /**
@@ -202,6 +199,8 @@ WmClient.prototype.setRequestedStaticCapabilities = function (stCaps) {
         }
     }
     this.reqStaticCaps = capNames
+    // cached results hold the previous capability list
+    this.clearCaches()
 }
 
 /**
@@ -227,19 +226,26 @@ WmClient.prototype.setRequestedVirtualCapabilities = function (vCaps) {
         }
     }
     this.reqVCaps = vcapNames
+    // cached results hold the previous capability list
+    this.clearCaches()
 }
 
 /**
  * lookupRequest - detects a device and returns its data in JSON format
- * @param nodeReq {http.ClientRequest} an HTTP request structure
+ * @param nodeReq {http.IncomingMessage|Request} an HTTP request: a Node.js request (headers object with
+ * lowercase names) or a Fetch API Request (Bun, Deno, edge runtimes), whose headers is a Headers object
  * @return {JSONDeviceData} a structure with the device information and capabilities
  */
 WmClient.prototype.lookupRequest = async function (nodeReq) {
+    const headers = nodeReq.headers
+    const getHeader = typeof headers.get === 'function'
+        ? (name) => headers.get(name)
+        : (name) => headers[name.toLowerCase()]
     // copy headers
     let lookupHeaders = {};
     for (let i = 0; i < this.importantHeaders.length; i++) {
         let name = this.importantHeaders[i]
-        let h = nodeReq.headers[name.toLowerCase()]
+        let h = getHeader(name)
         if (!isUndefinedOrNull(h) && h.length > 0) {
             lookupHeaders[name] = h
         }
@@ -278,15 +284,9 @@ WmClient.prototype.getCapabilityCount = function (device) {
  * @return {Array} the list of the device makers
  */
 
-WmClient.prototype.getAllDeviceMakes = function () {
-
-    return new Promise((resolve) => {
-        let makeMapPromise = this.getDeviceMakesMap()
-        makeMapPromise.then(deviceMakes => {
-            deviceMakes = Object.keys(deviceMakes)
-            resolve(deviceMakes)
-        })
-    })
+WmClient.prototype.getAllDeviceMakes = async function () {
+    let deviceMakes = await this.getDeviceMakesMap()
+    return Object.keys(deviceMakes)
 }
 
 
@@ -309,13 +309,13 @@ WmClient.prototype.getDeviceMakesMap = async function () {
     let client = this;
 
     // Check if we have a value for deviceMakesMap
-    if (!isUndefinedOrNull(client.deviceMakesMap) && client.deviceMakesMap.length > 0) {
+    if (!isUndefinedOrNull(client.deviceMakesMap) && Object.keys(client.deviceMakesMap).length > 0) {
         // This returns a deep copy of make model, so that any changes to it are not reflected into our cached value
         return JSON.parse(JSON.stringify(client.deviceMakesMap))
     }
 
     let fullUrl = client.createFullUrl('/v2/alldevices/json')
-    let allDevices = (await axios.get(fullUrl)).data
+    let allDevices = await http.get(fullUrl, client.httpTimeout)
 
     let deviceMakesMap = {}
     for (let i = 0; i < allDevices.length; i++) {
@@ -366,13 +366,13 @@ WmClient.prototype.getDeviceOsVerMap = async function () {
 
     let client = this
     // Check if we have a value for deviceMakesMap
-    if (!isUndefinedOrNull(client.deviceOsVerMap) && client.deviceOsVerMap.length > 0) {
+    if (!isUndefinedOrNull(client.deviceOsVerMap) && Object.keys(client.deviceOsVerMap).length > 0) {
         // This returns a deep copy of make model, so that any changes to it are not reflected into our cached value
         return JSON.parse(JSON.stringify(client.deviceOsVerMap))
     }
 
     let fullUrl = client.createFullUrl('/v2/alldeviceosversions/json')
-    const allDevices = (await axios.get(fullUrl)).data
+    const allDevices = await http.get(fullUrl, client.httpTimeout)
     let deviceOsVerMap = {};
     for (let i = 0; i < allDevices.length; i++) {
         let os = allDevices[i].device_os
@@ -411,14 +411,16 @@ WmClient.prototype.genericRequest = async function (method, path, reqData, parse
     }
     let result
     if (method === 'GET') {
-        let getResponse = await axios.get(this.createFullUrl(path))
-        result = parseCb(getResponse.data)
-        this.addToCache(cacheType, cacheKey, result)
+        result = parseCb(await http.get(this.createFullUrl(path), this.httpTimeout))
     } else if (method === 'POST') {
-        let postResponse = await axios.post(this.createFullUrl(path), reqData)
-        result = parseCb(postResponse.data)
-        this.addToCache(cacheType, cacheKey, result)
+        result = parseCb(await http.post(this.createFullUrl(path), reqData, this.httpTimeout))
     }
+    // The server reports errors as a normal HTTP 200 response with an error message: throw it
+    // for every lookup, before anything is cached.
+    if (!isUndefinedOrNull(result) && !isUndefinedOrNull(result.error) && result.error.length > 0) {
+        throw new Error(result.error)
+    }
+    this.addToCache(cacheType, cacheKey, result)
     return result
 }
 
@@ -427,7 +429,7 @@ WmClient.prototype.genericRequest = async function (method, path, reqData, parse
  * @return {string} this client API version
  */
 WmClient.prototype.getApiVersion = () => {
-    return '3.2.2'
+    return '3.3.0'
 }
 
 /**
@@ -553,7 +555,6 @@ WmClient.prototype.addToCache = function (cacheType, cacheKey, result) {
 WmClient.prototype.setHTTPTimeout = function (timeout) {
     if (!isUndefinedOrNull(timeout) && timeout >= 10000) {
         this.httpTimeout = timeout
-        axios.defaults.timeout = timeout
     }
 }
 
