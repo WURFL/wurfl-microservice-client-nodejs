@@ -32,6 +32,19 @@ function device(wurflId) {
     }
 }
 
+// A lookup that carries this User-Agent makes the stub answer with a server error (see serverError below).
+// This trigger exists only in the stub. The real server would return the generic device for this User-Agent:
+// it reports an error only when the request body is malformed, which this client can never send.
+const BAD_UA = 'bad-ua'
+const isBadUA = (body) => body.lookup_headers['User-Agent'] === BAD_UA
+
+// Shape of a WURFL Microservice 2.20.0 error (checked with curl on a malformed body): HTTP 200,
+// capabilities null, an error message. The real server also sends ltime: ''; the stub keeps the normal
+// ltime on purpose, so tests using it do not depend on the empty-ltime behaviour.
+function serverError() {
+    return { apiVersion: '2.20.0', capabilities: null, error: 'Error unmarshalling json request body', mtime: 1793400000, ltime: stub.ltime }
+}
+
 const routes = {
     'GET /v2/getinfo/json': () => ({
         wurfl_api_version: '1.13.3.0',
@@ -42,11 +55,15 @@ const routes = {
         virtual_caps: ['form_factor', 'is_robot'],
         ltime: stub.ltime,
     }),
-    'POST /v2/lookuprequest/json': () => device('samsung_sm_s928b_ver1'),
-    'POST /v2/lookupuseragent/json': () => device('samsung_sm_s928b_ver1'),
-    'POST /v2/lookupdeviceid/json': (body) => body.wurfl_id === 'missing'
-        ? { apiVersion: '1.13.3.0', capabilities: {}, error: 'device missing does not exist', mtime: 0, ltime: stub.ltime }
-        : device(body.wurfl_id),
+    'POST /v2/lookuprequest/json': (body) => isBadUA(body) ? serverError() : device('samsung_sm_s928b_ver1'),
+    'POST /v2/lookupuseragent/json': (body) => isBadUA(body) ? serverError() : device('samsung_sm_s928b_ver1'),
+    'POST /v2/lookupdeviceid/json': (body) => {
+        if (body.wurfl_id === 'unknown') {
+            // Shape the real WURFL Microservice 2.20.0 returns for an unknown device ID.
+            return { apiVersion: '2.20.0', capabilities: null, error: 'Error getting device using WURFL device ID specified device is missing', mtime: 1793400000, ltime: '' }
+        }
+        return device(body.wurfl_id)
+    },
     'GET /v2/alldevices/json': () => [
         { brand_name: 'Samsung', model_name: 'SM-S928B', marketing_name: 'Galaxy S24 Ultra' },
         { brand_name: 'Apple', model_name: 'iPhone', marketing_name: '' },
@@ -190,10 +207,57 @@ describe('errors and timeouts', () => {
         client.setHTTPTimeout(15000)
         expect(client.httpTimeout).toBe(15000)
     })
+})
 
-    test('lookupDeviceID throws the server error message', async () => {
+describe('unknown device ID (real server error shape: capabilities null)', () => {
+    const MSG = 'specified device is missing'
+
+    test('rejects with the server message, not a TypeError, without a cache', async () => {
         const client = await create()
-        await expect(client.lookupDeviceID('missing')).rejects.toThrow('does not exist')
+        const err = await client.lookupDeviceID('unknown').then(() => null, (e) => e)
+        expect(err).toBeInstanceOf(Error)
+        expect(err).not.toBeInstanceOf(TypeError)
+        expect(err.message).toContain(MSG)
+    })
+
+    test('rejects with the server message, not a TypeError, with a cache', async () => {
+        const client = await create()
+        client.setCacheSize(10)
+        const err = await client.lookupDeviceID('unknown').then(() => null, (e) => e)
+        expect(err).toBeInstanceOf(Error)
+        expect(err).not.toBeInstanceOf(TypeError)
+        expect(err.message).toContain(MSG)
+    })
+})
+
+describe('server error in header-based lookups (capabilities null)', () => {
+    const MSG = 'Error unmarshalling json request body'
+    const badRequest = { headers: { 'user-agent': BAD_UA } }
+
+    test('lookupUserAgent rejects with the server message', async () => {
+        const client = await create()
+        await expect(client.lookupUserAgent(BAD_UA)).rejects.toThrow(MSG)
+    })
+
+    test('lookupRequest rejects with the server message', async () => {
+        const client = await create()
+        await expect(client.lookupRequest(badRequest)).rejects.toThrow(MSG)
+    })
+
+    test('lookupUserAgent does not cache the error: the next lookup asks the server again', async () => {
+        const client = await create()
+        client.setCacheSize(10)
+        await expect(client.lookupUserAgent(BAD_UA)).rejects.toThrow(MSG)
+        await expect(client.lookupUserAgent(BAD_UA)).rejects.toThrow(MSG)
+        expect(stub.calls['POST /v2/lookupuseragent/json']).toBe(2)
+    })
+
+    test('lookupRequest does not cache the error: the next lookup asks the server again', async () => {
+        const client = await create()
+        client.setCacheSize(10)
+        await expect(client.lookupRequest(badRequest)).rejects.toThrow(MSG)
+        await expect(client.lookupRequest(badRequest)).rejects.toThrow(MSG)
+        expect(stub.calls['POST /v2/lookuprequest/json']).toBe(2)
     })
 })
 

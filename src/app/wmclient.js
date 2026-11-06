@@ -68,11 +68,7 @@ WmClient.prototype.lookupDeviceID = async function (wurflId) {
 
     const lHeaders = {}
     let reqData = new model.Request(lHeaders, this.reqStaticCaps, this.reqVCaps, wurflId);
-    let device = await this.genericRequest('POST', '/v2/lookupdeviceid/json', reqData, parseDevice, CACHE_TYPE_DEVICE_ID);
-    if (!isUndefinedOrNull(device.error) && device.error.length > 0){
-        throw new Error(device.error)
-    }
-    return device
+    return this.genericRequest('POST', '/v2/lookupdeviceid/json', reqData, parseDevice, CACHE_TYPE_DEVICE_ID);
 }
 
 WmClient.prototype.createPath = function (path) {
@@ -175,6 +171,8 @@ WmClient.prototype.setRequestedCapabilities = function (caps) {
     }
     this.reqStaticCaps = capNames
     this.reqVCaps = vcapNames
+    // cached results hold the previous capability list
+    this.clearCaches()
 }
 
 /**
@@ -201,6 +199,8 @@ WmClient.prototype.setRequestedStaticCapabilities = function (stCaps) {
         }
     }
     this.reqStaticCaps = capNames
+    // cached results hold the previous capability list
+    this.clearCaches()
 }
 
 /**
@@ -226,6 +226,8 @@ WmClient.prototype.setRequestedVirtualCapabilities = function (vCaps) {
         }
     }
     this.reqVCaps = vcapNames
+    // cached results hold the previous capability list
+    this.clearCaches()
 }
 
 /**
@@ -410,11 +412,15 @@ WmClient.prototype.genericRequest = async function (method, path, reqData, parse
     let result
     if (method === 'GET') {
         result = parseCb(await http.get(this.createFullUrl(path), this.httpTimeout))
-        this.addToCache(cacheType, cacheKey, result)
     } else if (method === 'POST') {
         result = parseCb(await http.post(this.createFullUrl(path), reqData, this.httpTimeout))
-        this.addToCache(cacheType, cacheKey, result)
     }
+    // The server reports errors as a normal HTTP 200 response with an error message: throw it
+    // for every lookup, before anything is cached.
+    if (!isUndefinedOrNull(result) && !isUndefinedOrNull(result.error) && result.error.length > 0) {
+        throw new Error(result.error)
+    }
+    this.addToCache(cacheType, cacheKey, result)
     return result
 }
 

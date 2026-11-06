@@ -9,6 +9,12 @@
 - Fixed: getAllDeviceMakes() never settled when the request failed
 - Fixed: the device makes and OS versions were downloaded again on every call instead of being cached
 - Fixed: checkData leaked into the global scope
+- Fixed: lookupDeviceID() failed with a TypeError ("Cannot read properties of null") when the device ID did not exist;
+  it now rejects with an Error carrying the message returned by the server
+- Fixed: errors reported by the server were returned as if they were device data by lookupUserAgent() and
+  lookupRequest(); they now reject with an Error carrying the server message, like lookupDeviceID(), and are never cached
+- Fixed: setRequestedCapabilities(), setRequestedStaticCapabilities() and setRequestedVirtualCapabilities() left
+  results cached with the previous capability list in place; they now clear the caches
 - Added TypeScript types (index.d.ts)
 - Tests: WM_URL selects the WURFL Microservice for the live tests; new offline tests run against a stub server
 

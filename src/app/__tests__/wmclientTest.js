@@ -156,16 +156,20 @@ describeLive("Wm client", () => {
         expect(device.ltime).toBeDefined()
     })
     test('lookupDeviceID should throw an error with message if device does not exist in server', async () => {
-        let exc = false
+        let error
         let device
         try {
             device = await client.lookupDeviceID('google_unexisting_id')
-        } catch (error) {
-            exc = true
+        } catch (e) {
+            error = e
         }
         expect(client.getCapabilityCount(device)).toBe(0)
         expect(device).toBeUndefined()
-        expect(exc).toBeTruthy()
+        expect(error).toBeInstanceOf(Error)
+        // The server answers with capabilities: null and an error message. The client must report
+        // that message, not fail with a TypeError while reading the missing capabilities.
+        expect(error).not.toBeInstanceOf(TypeError)
+        expect(error.message).toContain('device is missing')
     })
     test('getCapabilityCount should return the number of capabilities loaded in device', async () => {
 
@@ -349,6 +353,43 @@ describeLive("Wm client", () => {
         expect(client.uaCache.itemCount).toBe(0)
         expect(client.devIdCache.itemCount).toBe(0)
     })
+    // Changing the requested capabilities must not leave stale results in the caches.
+    // A fresh client is used, so the result does not depend on the state left by other tests.
+    describe('changing the requested capabilities invalidates cached results', () => {
+        const ASUS_UA = 'Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36'
+        const ASUS_ID = 'asus_z017d_ver1'
+        // Each setter selects model_name + is_smartphone; the server adds wurfl_id: 3 capabilities in total
+        const setters = [
+            ['setRequestedStaticCapabilities + setRequestedVirtualCapabilities', (c) => {
+                c.setRequestedStaticCapabilities(['model_name'])
+                c.setRequestedVirtualCapabilities(['is_smartphone'])
+            }],
+            ['setRequestedCapabilities', (c) => c.setRequestedCapabilities(['model_name', 'is_smartphone'])],
+        ]
+
+        test.each(setters)('%s: a cached user agent returns the new capabilities', async (name, change) => {
+            const c = await createLiveClient()
+            c.setCacheSize(10)
+            const before = await c.lookupUserAgent(ASUS_UA)
+            expect(c.getCapabilityCount(before)).toBeGreaterThan(3)
+            change(c)
+            const after = await c.lookupUserAgent(ASUS_UA)
+            expect(c.getCapabilityCount(after)).toBe(3)
+            expect(Object.keys(after.capabilities).sort()).toEqual(['is_smartphone', 'model_name', 'wurfl_id'])
+        })
+
+        test.each(setters)('%s: a cached device ID returns the new capabilities', async (name, change) => {
+            const c = await createLiveClient()
+            c.setCacheSize(10)
+            const before = await c.lookupDeviceID(ASUS_ID)
+            expect(c.getCapabilityCount(before)).toBeGreaterThan(3)
+            change(c)
+            const after = await c.lookupDeviceID(ASUS_ID)
+            expect(c.getCapabilityCount(after)).toBe(3)
+            expect(Object.keys(after.capabilities).sort()).toEqual(['is_smartphone', 'model_name', 'wurfl_id'])
+        })
+    })
+
     test('clearCachesIfNeeded, on lookup methods, should remove all elements from both caches only if the server\'s load time changes', async () => {
         let device = await client.lookupUserAgent('Mozilla/5.0 (Linux; Android 6.0; ASUS_Z017D Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36')
         expect(client.uaCache.itemCount).toBe(1)
