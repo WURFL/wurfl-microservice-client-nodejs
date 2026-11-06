@@ -1,4 +1,4 @@
-3.3.0 - Unreleased
+3.3.0 - Nov 2026
 ------------------------------------
 - No runtime dependencies: removed the unused unirest (and the deprecated request and form-data 0.2 it pulled in),
   replaced axios with the built-in fetch and lru-cache 4.1.1 with an internal LRU cache with the same API
