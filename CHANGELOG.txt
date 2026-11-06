@@ -1,3 +1,17 @@
+3.3.0 - Unreleased
+------------------------------------
+- No runtime dependencies: removed the unused unirest (and the deprecated request and form-data 0.2 it pulled in),
+  replaced axios with the built-in fetch and lru-cache 4.1.1 with an internal LRU cache with the same API
+- Requires Node.js 18 or later
+- lookupRequest() also accepts a Fetch API Request (Bun, Deno, edge runtimes)
+- The HTTP timeout (10 seconds by default, setHTTPTimeout) now applies to every request; setHTTPTimeout no longer
+  changes the global axios defaults of the application
+- Fixed: getAllDeviceMakes() never settled when the request failed
+- Fixed: the device makes and OS versions were downloaded again on every call instead of being cached
+- Fixed: checkData leaked into the global scope
+- Added TypeScript types (index.d.ts)
+- Tests: WM_URL selects the WURFL Microservice for the live tests; new offline tests run against a stub server
+
 3.2.2 - Sep 19, 2025
 ------------------------------------
 - Axios dependency upgraded to 1.12.2 to address Axios vulnerability to DoS attack through lack of data size check
